@@ -347,7 +347,7 @@ class GearCommandExecuteHandler(adsk.core.CommandEventHandler):
 
             # Create the gears.
             #gearComp = drawGear(des, diaPitch, numTeeth, thickness, rootFilletRad, pressureAngle, backlash, holeDiam)
-            gearComp = drawGearSet(des, module, numTeeth, thickness, rootFilletRad, pressureAngle, backlash, holeDiam)
+            gearComp = drawGearSet(des, module, numTeeth, numTeeth1, thickness, rootFilletRad, pressureAngle, backlash, holeDiam)
             
             if gearComp:
                 #if _standard.selectedItem.name == 'English':
@@ -720,7 +720,7 @@ def drawToothProfile(baseCircleDia, outsideDia, pitchDia, rootDia, numTeeth, bac
 
 
 # Builds a metric gear tooth.
-def drawGearSet(design, module, numTeeth, thickness, rootFilletRad, pressureAngle, backlash, holeDiam):
+def drawGearSet(design, module, numTeeth, numTeeth1, thickness, rootFilletRad, pressureAngle, backlash, holeDiam):
     try:
         # The module is specified in mm but everthing
         # here expects all distances to be in centimeters, so convert
@@ -729,6 +729,7 @@ def drawGearSet(design, module, numTeeth, thickness, rootFilletRad, pressureAngl
 
         # Compute the various values for a gear.
         pitchDia = numTeeth * module
+        pitchDia1 = numTeeth1 * module
 
         addendum = module
         if (1/module < (20 *(math.pi/180))-0.000001):
@@ -773,6 +774,18 @@ def drawGearSet(design, module, numTeeth, thickness, rootFilletRad, pressureAngl
 
         #### Extrude the circle to create the base of the gear.
 
+        # Create sketch for the cross section.
+        xzPlane = newComp.xZConstructionPlane
+        crossSectionSketch = sketches.add(xzPlane)
+        lines = crossSectionSketch.sketchCurves.sketchLines
+        coneCenter = adsk.core.Point3D.create(0, -pitchDia1/2, 0)
+        pitchTangent = adsk.core.Point3D.create(pitchDia/2, 0, 0)
+        pinionCenter = adsk.core.Point3D.create(pitchDia/2, -pitchDia1/2, 0)
+
+        coneTangentLine = lines.addByTwoPoints(pitchTangent, coneCenter)
+        wheelAxis = lines.addByTwoPoints(adsk.core.Point3D.create(0,0,0), coneCenter)
+        pinionAxis = lines.addByTwoPoints(pinionCenter, coneCenter)
+
         # Create an extrusion input to be able to define the input needed for an extrusion
         # while specifying the profile and that a new component is to be created
         extrudes = newComp.features.extrudeFeatures
@@ -790,6 +803,12 @@ def drawGearSet(design, module, numTeeth, thickness, rootFilletRad, pressureAngl
         toothSketch = sketches.add(xyPlane)
 
         drawToothProfile(baseCircleDia, outsideDia, pitchDia, rootDia, numTeeth, backlash, toothSketch)
+
+        # Create an extra sketch that contains a circle of the diametral pitch.
+        diametralPitchSketch = sketches.add(xyPlane)
+        diametralPitchCircle = diametralPitchSketch.sketchCurves.sketchCircles.addByCenterRadius(adsk.core.Point3D.create(0,0,0), pitchDia/2.0)
+        diametralPitchCircle.isConstruction = True
+        diametralPitchCircle.isFixed = True
 
     except Exception as error:
         _ui.messageBox("drawGearSet Failed : " + str(error)) 
