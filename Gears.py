@@ -623,100 +623,131 @@ def involutePoint(baseCircleRadius, distFromCenterToInvolutePoint):
 
 
 # Draws a tooth profile on the given plane
-def drawToothProfile(baseCircleDia, outsideDia, pitchDia, rootDia, numTeeth, backlash, toothSketch):
-        # Calculate points along the involute curve.
-        involutePointCount = 15 
-        involuteIntersectionRadius = baseCircleDia / 2.0
-        involutePoints = []
-        involuteSize = (outsideDia - baseCircleDia) / 2.0
-        for i in range(0, involutePointCount):
-            involuteIntersectionRadius = (baseCircleDia / 2.0) + ((involuteSize / (involutePointCount - 1)) * i)
-            newPoint = involutePoint(baseCircleDia / 2.0, involuteIntersectionRadius)
-            involutePoints.append(newPoint)
-            
-        # Get the point along the tooth that's at the pitch diameter and then
-        # calculate the angle to that point.
-        pitchInvolutePoint = involutePoint(baseCircleDia / 2.0, pitchDia / 2.0)
-        pitchPointAngle = math.atan(pitchInvolutePoint.y / pitchInvolutePoint.x)
+def drawToothProfile(toothSketch, module, numTeeth, pressureAngle, backlash, ratio):
+    '''
+    For proper tooth shape in a bevel gear, R0 should be larger than value given by 
+    spur gear calculation (m*z/2). Using Tredgold's approximation, reference pitch
+    radius is the slant height of the back cone: 
+        https://en.wikipedia.org/wiki/List_of_gear_nomenclature#Back_cone
+    r0 = m*z/2;          // Reference pitch radius by tooth and module
+    R0 = r0/sin(atan(ratio));   // Tredgold's approximation
+    Zi = 2*R0/m;                // tooth count of the imaginary spur gear
+    Rb = R0*cos(alpha); // Base pitch radius
+    Ra = R0+m;          // Addendum circle radius
+    Rd = R0-(m+c*m);    // Dedendum circle radius
+    '''
 
-        # Determine the angle defined by the tooth thickness as measured at
-        # the pitch diameter circle.
-        toothThicknessAngle = (2 * math.pi) / (2 * numTeeth)
-        
-        # Determine the angle needed for the specified backlash.
-        backlashAngle = (backlash / (pitchDia / 2.0)) * .25
-        
-        # Determine the angle to rotate the curve.
-        rotateAngle = -((toothThicknessAngle/2) + pitchPointAngle - backlashAngle)
-        
-        # Rotate the involute so the middle of the tooth lies on the x axis.
-        cosAngle = math.cos(rotateAngle)
-        sinAngle = math.sin(rotateAngle)
-        for i in range(0, involutePointCount):
-            newX = involutePoints[i].x * cosAngle - involutePoints[i].y * sinAngle
-            newY = involutePoints[i].x * sinAngle + involutePoints[i].y * cosAngle
-            involutePoints[i] = adsk.core.Point3D.create(newX, newY, 0)
+    # Compute the various values for a gear.
+    pitchDia = numTeeth * module
 
-        # Create a new set of points with a negated y.  This effectively mirrors the original
-        # points about the X axis.
-        involute2Points = []
-        for i in range(0, involutePointCount):
-            involute2Points.append(adsk.core.Point3D.create(involutePoints[i].x, -involutePoints[i].y, 0))
-
-        curve1Dist = []
-        curve1Angle = []
-        for i in range(0, involutePointCount):
-            curve1Dist.append(math.sqrt(involutePoints[i].x * involutePoints[i].x + involutePoints[i].y * involutePoints[i].y))
-            curve1Angle.append(math.atan(involutePoints[i].y / involutePoints[i].x))
-        
-        curve2Dist = []
-        curve2Angle = []
-        for i in range(0, involutePointCount):
-            curve2Dist.append(math.sqrt(involute2Points[i].x * involute2Points[i].x + involute2Points[i].y * involute2Points[i].y))
-            curve2Angle.append(math.atan(involute2Points[i].y / involute2Points[i].x))
-
-        toothSketch.isComputeDeferred = True
-		
-        # Create and load an object collection with the points.
-        pointSet = adsk.core.ObjectCollection.create()
-        for i in range(0, involutePointCount):
-            pointSet.add(involutePoints[i])
-
-        # Create the first spline.
-        spline1 = toothSketch.sketchCurves.sketchFittedSplines.add(pointSet)
-
-        # Add the involute points for the second spline to an ObjectCollection.
-        pointSet = adsk.core.ObjectCollection.create()
-        for i in range(0, involutePointCount):
-            pointSet.add(involute2Points[i])
-
-        # Create the second spline.
-        spline2 = toothSketch.sketchCurves.sketchFittedSplines.add(pointSet)
-
-        # Draw the arc for the top of the tooth.
-        midPoint = adsk.core.Point3D.create((outsideDia / 2), 0, 0)
-        toothSketch.sketchCurves.sketchArcs.addByThreePoints(spline1.endSketchPoint, midPoint, spline2.endSketchPoint)     
-
-        # Check to see if involute goes down to the root or not.  If not, then
-        # create lines to connect the involute to the root.
-        if( baseCircleDia < rootDia ):
-            toothSketch.sketchCurves.sketchLines.addByTwoPoints(spline2.startSketchPoint, spline1.startSketchPoint)
+    #addendum = module
+    if (1/module < (20 *(math.pi/180))-0.000001):
+        dedendum = 1.157 * module
+    else:
+        circularPitch = math.pi * module
+        if circularPitch >= 20:
+            dedendum = 1.25 * module
         else:
-            rootPoint1 = adsk.core.Point3D.create((rootDia / 2 - 0.001) * math.cos(curve1Angle[0] ), (rootDia / 2) * math.sin(curve1Angle[0]), 0)
-            line1 = toothSketch.sketchCurves.sketchLines.addByTwoPoints(rootPoint1, spline1.startSketchPoint)
+            dedendum = (1.2 * module) + (.002 * 2.54)
 
-            rootPoint2 = adsk.core.Point3D.create((rootDia / 2 - 0.001) * math.cos(curve2Angle[0]), (rootDia / 2) * math.sin(curve2Angle[0]), 0)
-            line2 = toothSketch.sketchCurves.sketchLines.addByTwoPoints(rootPoint2, spline2.startSketchPoint)
+    rootDia = pitchDia - (2 * dedendum)
+    baseCircleDia = pitchDia * math.cos(pressureAngle)
+    outsideDia = (numTeeth + 2) * module
+    # Compute the various values for a gear.
 
-            baseLine = toothSketch.sketchCurves.sketchLines.addByTwoPoints(line1.startSketchPoint, line2.startSketchPoint)
+    # Calculate points along the involute curve.
+    involutePointCount = 15 
+    involuteIntersectionRadius = baseCircleDia / 2.0
+    involutePoints = []
+    involuteSize = (outsideDia - baseCircleDia) / 2.0
+    for i in range(0, involutePointCount):
+        involuteIntersectionRadius = (baseCircleDia / 2.0) + ((involuteSize / (involutePointCount - 1)) * i)
+        newPoint = involutePoint(baseCircleDia / 2.0, involuteIntersectionRadius)
+        involutePoints.append(newPoint)
+        
+    # Get the point along the tooth that's at the pitch diameter and then
+    # calculate the angle to that point.
+    pitchInvolutePoint = involutePoint(baseCircleDia / 2.0, pitchDia / 2.0)
+    pitchPointAngle = math.atan(pitchInvolutePoint.y / pitchInvolutePoint.x)
 
-            # Make the lines tangent to the spline so the root fillet will behave correctly.            
-            line1.isFixed = True
-            line2.isFixed = True
-            toothSketch.geometricConstraints.addTangent(spline1, line1)
-            toothSketch.geometricConstraints.addTangent(spline2, line2)
-       
-        toothSketch.isComputeDeferred = False
+    # Determine the angle defined by the tooth thickness as measured at
+    # the pitch diameter circle.
+    toothThicknessAngle = (2 * math.pi) / (2 * numTeeth)
+    
+    # Determine the angle needed for the specified backlash.
+    backlashAngle = (backlash / (pitchDia / 2.0)) * .25
+    
+    # Determine the angle to rotate the curve.
+    rotateAngle = -((toothThicknessAngle/2) + pitchPointAngle - backlashAngle)
+    
+    # Rotate the involute so the middle of the tooth lies on the x axis.
+    cosAngle = math.cos(rotateAngle)
+    sinAngle = math.sin(rotateAngle)
+    for i in range(0, involutePointCount):
+        newX = involutePoints[i].x * cosAngle - involutePoints[i].y * sinAngle
+        newY = involutePoints[i].x * sinAngle + involutePoints[i].y * cosAngle
+        involutePoints[i] = adsk.core.Point3D.create(newX, newY, 0)
+
+    # Create a new set of points with a negated y.  This effectively mirrors the original
+    # points about the X axis.
+    involute2Points = []
+    for i in range(0, involutePointCount):
+        involute2Points.append(adsk.core.Point3D.create(involutePoints[i].x, -involutePoints[i].y, 0))
+
+    curve1Dist = []
+    curve1Angle = []
+    for i in range(0, involutePointCount):
+        curve1Dist.append(math.sqrt(involutePoints[i].x * involutePoints[i].x + involutePoints[i].y * involutePoints[i].y))
+        curve1Angle.append(math.atan(involutePoints[i].y / involutePoints[i].x))
+    
+    curve2Dist = []
+    curve2Angle = []
+    for i in range(0, involutePointCount):
+        curve2Dist.append(math.sqrt(involute2Points[i].x * involute2Points[i].x + involute2Points[i].y * involute2Points[i].y))
+        curve2Angle.append(math.atan(involute2Points[i].y / involute2Points[i].x))
+
+    toothSketch.isComputeDeferred = True
+    
+    # Create and load an object collection with the points.
+    pointSet = adsk.core.ObjectCollection.create()
+    for i in range(0, involutePointCount):
+        pointSet.add(involutePoints[i])
+
+    # Create the first spline.
+    spline1 = toothSketch.sketchCurves.sketchFittedSplines.add(pointSet)
+
+    # Add the involute points for the second spline to an ObjectCollection.
+    pointSet = adsk.core.ObjectCollection.create()
+    for i in range(0, involutePointCount):
+        pointSet.add(involute2Points[i])
+
+    # Create the second spline.
+    spline2 = toothSketch.sketchCurves.sketchFittedSplines.add(pointSet)
+
+    # Draw the arc for the top of the tooth.
+    midPoint = adsk.core.Point3D.create((outsideDia / 2), 0, 0)
+    toothSketch.sketchCurves.sketchArcs.addByThreePoints(spline1.endSketchPoint, midPoint, spline2.endSketchPoint)     
+
+    # Check to see if involute goes down to the root or not.  If not, then
+    # create lines to connect the involute to the root.
+    if( baseCircleDia < rootDia ):
+        toothSketch.sketchCurves.sketchLines.addByTwoPoints(spline2.startSketchPoint, spline1.startSketchPoint)
+    else:
+        rootPoint1 = adsk.core.Point3D.create((rootDia / 2 - 0.001) * math.cos(curve1Angle[0] ), (rootDia / 2) * math.sin(curve1Angle[0]), 0)
+        line1 = toothSketch.sketchCurves.sketchLines.addByTwoPoints(rootPoint1, spline1.startSketchPoint)
+
+        rootPoint2 = adsk.core.Point3D.create((rootDia / 2 - 0.001) * math.cos(curve2Angle[0]), (rootDia / 2) * math.sin(curve2Angle[0]), 0)
+        line2 = toothSketch.sketchCurves.sketchLines.addByTwoPoints(rootPoint2, spline2.startSketchPoint)
+
+        baseLine = toothSketch.sketchCurves.sketchLines.addByTwoPoints(line1.startSketchPoint, line2.startSketchPoint)
+
+        # Make the lines tangent to the spline so the root fillet will behave correctly.            
+        line1.isFixed = True
+        line2.isFixed = True
+        toothSketch.geometricConstraints.addTangent(spline1, line1)
+        toothSketch.geometricConstraints.addTangent(spline2, line2)
+    
+    toothSketch.isComputeDeferred = False
 
 
 # Builds a metric gear tooth.
@@ -728,10 +759,11 @@ def drawGearSet(design, module, numTeeth, numTeeth1, thickness, rootFilletRad, p
         module = module / 10
 
         # Compute the various values for a gear.
+        # Compute the various values for a gear.
         pitchDia = numTeeth * module
         pitchDia1 = numTeeth1 * module
 
-        addendum = module
+        #addendum = module
         if (1/module < (20 *(math.pi/180))-0.000001):
             dedendum = 1.157 * module
         else:
@@ -744,6 +776,8 @@ def drawGearSet(design, module, numTeeth, numTeeth1, thickness, rootFilletRad, p
         rootDia = pitchDia - (2 * dedendum)
         baseCircleDia = pitchDia * math.cos(pressureAngle)
         outsideDia = (numTeeth + 2) * module
+        # Compute the various values for a gear.
+        # Compute the various values for a gear.
 
         # Create a new component by creating an occurrence.
         occs = design.rootComponent.occurrences
@@ -757,52 +791,54 @@ def drawGearSet(design, module, numTeeth, numTeeth1, thickness, rootFilletRad, p
         baseSketch = sketches.add(xyPlane)
 
         # Draw a circle for the base.
-        baseSketch.sketchCurves.sketchCircles.addByCenterRadius(adsk.core.Point3D.create(0,0,0), rootDia/2.0)
+        #baseSketch.sketchCurves.sketchCircles.addByCenterRadius(adsk.core.Point3D.create(0,0,0), rootDia/2.0)
 
         # Draw a circle for the center hole, if the value is greater than 0.
-        prof = adsk.fusion.Profile.cast(None)
-        if holeDiam - (_app.pointTolerance * 2) > 0:
-            baseSketch.sketchCurves.sketchCircles.addByCenterRadius(adsk.core.Point3D.create(0,0,0), holeDiam/2.0)
+        #prof = adsk.fusion.Profile.cast(None)
+        #if holeDiam - (_app.pointTolerance * 2) > 0:
+        #    baseSketch.sketchCurves.sketchCircles.addByCenterRadius(adsk.core.Point3D.create(0,0,0), holeDiam/2.0)
+        #
+        #    # Find the profile that uses both circles.
+        #    for prof in baseSketch.profiles:
+        #        if prof.profileLoops.count == 2:
+        #            break
+        #else:
+        #    # Use the single profile.
+        #    prof = baseSketch.profiles.item(0)
 
-            # Find the profile that uses both circles.
-            for prof in baseSketch.profiles:
-                if prof.profileLoops.count == 2:
-                    break
-        else:
-            # Use the single profile.
-            prof = baseSketch.profiles.item(0)
-
-        #### Extrude the circle to create the base of the gear.
-
-        # Create sketch for the cross section.
+        # Create sketch for the cross section
         xzPlane = newComp.xZConstructionPlane
         crossSectionSketch = sketches.add(xzPlane)
         lines = crossSectionSketch.sketchCurves.sketchLines
         coneCenter = adsk.core.Point3D.create(0, -pitchDia1/2, 0)
         pitchTangent = adsk.core.Point3D.create(pitchDia/2, 0, 0)
         pinionCenter = adsk.core.Point3D.create(pitchDia/2, -pitchDia1/2, 0)
+        wheelCenter = adsk.core.Point3D.create(0,0,0)
 
         coneTangentLine = lines.addByTwoPoints(pitchTangent, coneCenter)
-        wheelAxis = lines.addByTwoPoints(adsk.core.Point3D.create(0,0,0), coneCenter)
-        pinionAxis = lines.addByTwoPoints(pinionCenter, coneCenter)
+        wheelAxis = lines.addByTwoPoints(wheelCenter, coneCenter)       # for creating rotations later
+        wheelBase = lines.addByTwoPoints(wheelCenter, pitchTangent)     # not sure this is needed
+        pinionAxis = lines.addByTwoPoints(pinionCenter, coneCenter)     # for creating rotations later
+        pinionBase = lines.addByTwoPoints(pinionCenter, pitchTangent)   # not sure this is needed
 
+        #### Extrude the circle to create the base of the gear.
         # Create an extrusion input to be able to define the input needed for an extrusion
         # while specifying the profile and that a new component is to be created
-        extrudes = newComp.features.extrudeFeatures
-        extInput = extrudes.createInput(prof, adsk.fusion.FeatureOperations.NewBodyFeatureOperation)
+        #extrudes = newComp.features.extrudeFeatures
+        #extInput = extrudes.createInput(prof, adsk.fusion.FeatureOperations.NewBodyFeatureOperation)
 
         # Define that the extent is a distance extent of 5 cm.
-        distance = adsk.core.ValueInput.createByReal(thickness)
-        extInput.setDistanceExtent(False, distance)
+        #distance = adsk.core.ValueInput.createByReal(thickness)
+        #extInput.setDistanceExtent(False, distance)
 
         # Create the extrusion.
-        baseExtrude = extrudes.add(extInput)
+        #baseExtrude = extrudes.add(extInput)
 
         # Create a second sketch for the tooth on xyPlane for now, 
         # plane at angle based on gear ratio TODO
         toothSketch = sketches.add(xyPlane)
 
-        drawToothProfile(baseCircleDia, outsideDia, pitchDia, rootDia, numTeeth, backlash, toothSketch)
+        drawToothProfile(toothSketch, module, numTeeth, pressureAngle, backlash, numTeeth/numTeeth1)
 
         # Create an extra sketch that contains a circle of the diametral pitch.
         diametralPitchSketch = sketches.add(xyPlane)
