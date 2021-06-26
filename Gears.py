@@ -24,12 +24,11 @@ _units = ''
 _pressureAngle = adsk.core.DropDownCommandInput.cast(None)
 _pressureAngleCustom = adsk.core.ValueCommandInput.cast(None)
 _backlash = adsk.core.ValueCommandInput.cast(None)
-#_diaPitch = adsk.core.ValueCommandInput.cast(None)
 _module = adsk.core.ValueCommandInput.cast(None)
 _numTeeth = adsk.core.StringValueCommandInput.cast(None)
 _numTeeth1 = adsk.core.StringValueCommandInput.cast(None)
-_rootFilletRad = adsk.core.ValueCommandInput.cast(None)
-_thickness = adsk.core.ValueCommandInput.cast(None)
+#_rootFilletRad = adsk.core.ValueCommandInput.cast(None)
+_thickness = adsk.core.ValueCommandInput.cast(None)     # TODO: Replace this with face (height of tooth loft)
 _holeDiam = adsk.core.ValueCommandInput.cast(None)
 _pitchDiam = adsk.core.TextBoxCommandInput.cast(None)
 _errMessage = adsk.core.TextBoxCommandInput.cast(None)
@@ -135,20 +134,6 @@ class GearCommandCreatedHandler(adsk.core.CommandCreatedEventHandler):
             # First haxxoring of sample gear generator, force _units to mm
             _units = 'mm'
                         
-            # Define the default values and get the previous values from the attributes.
-            #if _units == 'in':
-            #    standard = 'English'
-            #else:
-            #    standard = 'Metric'
-            #standardAttrib = des.attributes.itemByName('SpurGear', 'standard')
-            #if standardAttrib:
-            #    standard = standardAttrib.value
-                
-            #if standard == 'English':
-            #    _units = 'in'
-            #else:
-            #    _units = 'mm'
-            
             pressureAngle = '20 deg'
             pressureAngleAttrib = des.attributes.itemByName('SpurGear', 'pressureAngle')
             if pressureAngleAttrib:
@@ -159,18 +144,12 @@ class GearCommandCreatedHandler(adsk.core.CommandCreatedEventHandler):
             if pressureAngleCustomAttrib:
                 pressureAngleCustom = float(pressureAngleCustomAttrib.value)            
 
-            #diaPitch = '2'
-            #diaPitchAttrib = des.attributes.itemByName('SpurGear', 'diaPitch')
-            #if diaPitchAttrib:
-            #    diaPitch = diaPitchAttrib.value
-            #metricModule = 25.4 / float(diaPitch)
-
-            metricModule = '2.5'
+            metricModule = '2.0'
             moduleAttrib = des.attributes.itemByName('SpurGear', 'module')
             if moduleAttrib:
                 metricModule = moduleAttrib.value
 
-            backlash = '0.0'
+            backlash = '0.05'
             backlashAttrib = des.attributes.itemByName('SpurGear', 'backlash')
             if backlashAttrib:
                 backlash = backlashAttrib.value
@@ -185,10 +164,10 @@ class GearCommandCreatedHandler(adsk.core.CommandCreatedEventHandler):
             if numTeeth1Attrib:
                 numTeeth1 = numTeeth1Attrib.value
 
-            rootFilletRad = str(.05)    # .5 mm
-            rootFilletRadAttrib = des.attributes.itemByName('SpurGear', 'rootFilletRad')
-            if rootFilletRadAttrib:
-                rootFilletRad = rootFilletRadAttrib.value
+            #rootFilletRad = str(.05)    # .5 mm
+            #rootFilletRadAttrib = des.attributes.itemByName('SpurGear', 'rootFilletRad')
+            #if rootFilletRadAttrib:
+            #    rootFilletRad = rootFilletRadAttrib.value
 
             thickness = str(1.0)        # 1 cm 
             thicknessAttrib = des.attributes.itemByName('SpurGear', 'thickness')
@@ -205,25 +184,8 @@ class GearCommandCreatedHandler(adsk.core.CommandCreatedEventHandler):
             inputs = cmd.commandInputs
             
             #global _standard, _pressureAngle, _pressureAngleCustom, _diaPitch, _pitch, _module, _numTeeth, _rootFilletRad, _thickness, _holeDiam, _pitchDiam, _backlash, _imgInputEnglish, _imgInputMetric, _errMessage
-            global _pressureAngle, _pressureAngleCustom, _pitch, _module, _numTeeth, _numTeeth1, _rootFilletRad, _thickness, _holeDiam, _pitchDiam, _backlash, _errMessage
-
-            # Define the command dialog.
-            #_imgInputEnglish = inputs.addImageCommandInput('gearImageEnglish', '', 'Resources/GearEnglish.png')
-            #_imgInputEnglish.isFullWidth = True
-
-            #_imgInputMetric = inputs.addImageCommandInput('gearImageMetric', '', 'Resources/GearMetric.png')
-            #_imgInputMetric.isFullWidth = True
-
-            #_standard = inputs.addDropDownCommandInput('standard', 'Standard', adsk.core.DropDownStyles.TextListDropDownStyle)
-            #if standard == "English":
-            #    _standard.listItems.add('English', True)
-            #    _standard.listItems.add('Metric', False)
-            #    #_imgInputMetric.isVisible = False
-            #else:
-            #    _standard.listItems.add('English', False)
-            #    _standard.listItems.add('Metric', True)
-            #    #_imgInputEnglish.isVisible = False            
-            
+            global _pressureAngle, _pressureAngleCustom, _pitch, _module, _numTeeth, _numTeeth1, _thickness, _holeDiam, _pitchDiam, _backlash, _errMessage
+                       
             _pressureAngle = inputs.addDropDownCommandInput('pressureAngle', 'Pressure Angle', adsk.core.DropDownStyles.TextListDropDownStyle)
             if pressureAngle == '14.5 deg':
                 _pressureAngle.listItems.add('14.5 deg', True)
@@ -248,22 +210,15 @@ class GearCommandCreatedHandler(adsk.core.CommandCreatedEventHandler):
             _pressureAngleCustom = inputs.addValueInput('pressureAngleCustom', 'Custom Angle', 'deg', adsk.core.ValueInput.createByReal(pressureAngleCustom))
             if pressureAngle != 'Custom':
                 _pressureAngleCustom.isVisible = False
-                        
-            #_diaPitch = inputs.addValueInput('diaPitch', 'Diametral Pitch', '', adsk.core.ValueInput.createByString(diaPitch))   
 
             _module = inputs.addValueInput('module', 'Module', '', adsk.core.ValueInput.createByReal(float(metricModule)))   
             
-            #if standard == 'English':
-            #    _module.isVisible = False
-            #elif standard == 'Metric':
-            #    _diaPitch.isVisible = False
-                
             _numTeeth = inputs.addStringValueInput('numTeeth', 'Wheel Teeth', numTeeth)        
             _numTeeth1 = inputs.addStringValueInput('numTeeth1', 'Pinion Teeth', numTeeth1)        
 
             _backlash = inputs.addValueInput('backlash', 'Backlash', _units, adsk.core.ValueInput.createByReal(float(backlash)))
 
-            _rootFilletRad = inputs.addValueInput('rootFilletRad', 'Root Fillet Radius', _units, adsk.core.ValueInput.createByReal(float(rootFilletRad)))
+            #_rootFilletRad = inputs.addValueInput('rootFilletRad', 'Root Fillet Radius', _units, adsk.core.ValueInput.createByReal(float(rootFilletRad)))
 
             _thickness = inputs.addValueInput('thickness', 'Gear Thickness', _units, adsk.core.ValueInput.createByReal(float(thickness)))
 
@@ -322,7 +277,7 @@ class GearCommandExecuteHandler(adsk.core.CommandEventHandler):
             attribs.add('SpurGear', 'module', str(module))
             attribs.add('SpurGear', 'numTeeth', str(_numTeeth.value))
             attribs.add('SpurGear', 'numTeeth1', str(_numTeeth1.value))
-            attribs.add('SpurGear', 'rootFilletRad', str(_rootFilletRad.value))
+            #attribs.add('SpurGear', 'rootFilletRad', str(_rootFilletRad.value))
             attribs.add('SpurGear', 'thickness', str(_thickness.value))
             attribs.add('SpurGear', 'holeDiam', str(_holeDiam.value))
             attribs.add('SpurGear', 'backlash', str(_backlash.value))
@@ -340,23 +295,15 @@ class GearCommandExecuteHandler(adsk.core.CommandEventHandler):
 
             numTeeth = int(_numTeeth.value)
             numTeeth1 = int(_numTeeth1.value)
-            rootFilletRad = _rootFilletRad.value
+            #rootFilletRad = _rootFilletRad.value
             thickness = _thickness.value
             holeDiam = _holeDiam.value
             backlash = _backlash.value
 
             # Create the gears.
-            #gearComp = drawGear(des, diaPitch, numTeeth, thickness, rootFilletRad, pressureAngle, backlash, holeDiam)
-            gearComp = drawGearSet(des, module, numTeeth, numTeeth1, thickness, rootFilletRad, pressureAngle, backlash, holeDiam)
+            gearComp = drawGearSet(des, module, numTeeth, numTeeth1, thickness, pressureAngle, backlash, holeDiam)
             
             if gearComp:
-                #if _standard.selectedItem.name == 'English':
-                #    desc = 'Spur Gear; Diametrial Pitch: ' + str(diaPitch) + '; '            
-                #elif _standard.selectedItem.name == 'Metric':
-                #    desc = 'Spur Gear; Module: ' +  str(25.4 / diaPitch) + '; '
-
-                #TODO: Replace diaPitch with direct usage of module
-                #desc = 'Gear; Module: ' +  str(25.4 / diaPitch) + '; '
                 desc = 'Gear; Module: ' +  str(module) + '; '
 
                 desc += 'Num Teeth: ' + str(numTeeth) + '; '
@@ -365,6 +312,7 @@ class GearCommandExecuteHandler(adsk.core.CommandEventHandler):
                 
                 desc += 'Backlash: ' + des.unitsManager.formatInternalValue(backlash, _units, True)
                 gearComp.description = desc
+
         except:
             if _ui:
                 _ui.messageBox('Failed:\n{}'.format(traceback.format_exc()))
@@ -381,78 +329,11 @@ class GearCommandInputChangedHandler(adsk.core.InputChangedEventHandler):
             
             global _units
 
-            # None of this needed if only one 'standard'
-            #if changedInput.id == 'standard':
-            #    if _standard.selectedItem.name == 'English':
-            #        #_imgInputMetric.isVisible = False
-            #        #_imgInputEnglish.isVisible = True
-            #        
-            #        _diaPitch.isVisible = True
-            #        _module.isVisible = False
-            # 
-            #        _diaPitch.value = 25.4 / _module.value
-            #        
-            #        _units = 'in'
-            #    elif _standard.selectedItem.name == 'Metric':
-            #        #_imgInputMetric.isVisible = True
-            #        #_imgInputEnglish.isVisible = False
-            #        
-            #        _diaPitch.isVisible = False
-            #        _module.isVisible = True
-            #    
-            #        _module.value = 25.4 / _diaPitch.value
-            #        
-            #        _units = 'mm'
-            #
-            #    # Set each one to it's current value because otherwised if the user 
-            #    # has edited it, the value won't update in the dialog because 
-            #    # apparently it remembers the units when the value was edited.
-            #    # Setting the value using the API resets this.
-            #    _backlash.value = _backlash.value
-            #    _backlash.unitType = _units
-            #    _rootFilletRad.value = _rootFilletRad.value
-            #    _rootFilletRad.unitType = _units
-            #    _thickness.value = _thickness.value
-            #    _thickness.unitType = _units
-            #    _holeDiam.value = _holeDiam.value
-            #    _holeDiam.unitType = _units
-                
-            # None of this needed of not changing standard
-            # Update the pitch diameter value.
-            #diaPitch = None
-            #if _standard.selectedItem.name == 'English':
-            #    result = getCommandInputValue(_diaPitch, '')
-            #    if result[0]:
-            #        diaPitch = result[1]
-            #elif _standard.selectedItem.name == 'Metric':
-            #    result = getCommandInputValue(_module, '')
-            #    if result[0]:
-            #        diaPitch = 25.4 / result[1]
-            #
-            # if only metric standard, just need to the one case
-            
-            #diaPitch = None
-            #result = getCommandInputValue(_module, '')
-            #if result[0]:
-            #    diaPitch = 25.4 / result[1]
             module = None
             result = getCommandInputValue(_module, '')
             if result[0]:
                 module = result[1]
 
-            #if not diaPitch == None:
-            #    if _numTeeth.value.isdigit(): 
-            #        numTeeth = int(_numTeeth.value)
-            #        pitchDia = numTeeth/diaPitch
-            # 
-            #        # The pitch dia has been calculated in inches, but this expects cm as the input units.
-            #        des = adsk.fusion.Design.cast(_app.activeProduct)
-            #        pitchDiaText = des.unitsManager.formatInternalValue(pitchDia * 2.54, _units, True)
-            #        _pitchDiam.text = pitchDiaText
-            #    else:
-            #        _pitchDiam.text = ''                    
-            #else:
-            #    _pitchDiam.text = ''
             if not module == None:
                 if _numTeeth.value.isdigit(): 
                     numTeeth = int(_numTeeth.value)
@@ -517,22 +398,6 @@ class GearCommandValidateInputsHandler(adsk.core.ValidateInputsEventHandler):
                 eventArgs.areInputsValid = False
                 return
 
-            # Calculate some of the gear sizes to use in validation.
-            #if _standard.selectedItem.name == 'English':
-            #    result = getCommandInputValue(_diaPitch, '')
-            #    if result[0] == False:
-            #        eventArgs.areInputsValid = False
-            #        return
-            #    else:
-            #        diaPitch = result[1]
-            #elif _standard.selectedItem.name == 'Metric':
-            #    result = getCommandInputValue(_module, '')
-            #    if result[0] == False:
-            #        eventArgs.areInputsValid = False
-            #        return
-            #    else:
-            #        diaPitch = 25.4 / result[1]
-
             # With only metric standard, this confusing block of code
             # can be replaced with 
             #   pitchDia = numTeeth * module 
@@ -588,11 +453,13 @@ class GearCommandValidateInputsHandler(adsk.core.ValidateInputsEventHandler):
                 eventArgs.areInputsValid = False
                 return
 
-            toothThickness = baseCircleCircumference / (numTeeth * 2)
-            if _rootFilletRad.value > toothThickness * .4:
-                _errMessage.text = 'The root fillet radius is too large.  It must be less than ' + des.unitsManager.formatInternalValue(toothThickness * .4, _units, True)
-                eventArgs.areInputsValid = False
-                return
+            #TODO: Add check for backlash here
+
+            #toothThickness = baseCircleCircumference / (numTeeth * 2)
+            #if _rootFilletRad.value > toothThickness * .4:
+            #    _errMessage.text = 'The root fillet radius is too large.  It must be less than ' + des.unitsManager.formatInternalValue(toothThickness * .4, _units, True)
+            #    eventArgs.areInputsValid = False
+            #    return
         except:
             if _ui:
                 _ui.messageBox('Failed:\n{}'.format(traceback.format_exc()))
@@ -731,6 +598,7 @@ def drawToothProfile(toothSketch, module, numTeeth, pressureAngle, backlash, rat
     # create lines to connect the involute to the root.
     if( baseCircleDia < rootDia ):
         toothSketch.sketchCurves.sketchLines.addByTwoPoints(spline2.startSketchPoint, spline1.startSketchPoint)
+        profilePoint = involutePoints[0]
     else:
         rootPoint1 = adsk.core.Point3D.create((rootDia / 2 - 0.001) * math.cos(curve1Angle0 ), (rootDia / 2) * math.sin(curve1Angle0), 0)
         line1 = toothSketch.sketchCurves.sketchLines.addByTwoPoints(rootPoint1, spline1.startSketchPoint)
@@ -745,13 +613,16 @@ def drawToothProfile(toothSketch, module, numTeeth, pressureAngle, backlash, rat
         line2.isFixed = True
         toothSketch.geometricConstraints.addTangent(spline1, line1)
         toothSketch.geometricConstraints.addTangent(spline2, line2)
+
+        profilePoint = rootPoint1
     
     toothSketch.isComputeDeferred = False
 
-    return involutePoints
+    return profilePoint
+
 
 # Builds a metric gear tooth.
-def drawGearSet(design, module, numTeeth, numTeeth1, thickness, rootFilletRad, pressureAngle, backlash, holeDiam):
+def drawGearSet(design, module, numTeeth, numTeeth1, thickness, pressureAngle, backlash, holeDiam):
     try:
         # The module is specified in mm but everthing
         # here expects all distances to be in centimeters, so convert
@@ -862,31 +733,19 @@ def drawGearSet(design, module, numTeeth, numTeeth1, thickness, rootFilletRad, p
         #baseExtrude = extrudes.add(extInput)
 
         # Create a second sketch for the tooth on xyPlane for now, 
-        # plane at angle based on gear ratio TODO
-        #toothSketch = sketches.add(xyPlane)
         toothSketch = sketches.add(toothPlane)
 
-        # pitch circle of the imaginary gear from Tredgold's approximation
-        #Rt = math.sqrt(bca*bca + pitchDia*pitchDia) / 2
-        #diametralPitchCircle1 = toothSketch.sketchCurves.sketchCircles.addByCenterRadius(adsk.core.Point3D.create(0,0,0),Rt)
-        #diametralPitchCircle1.isConstruction = True
-        #diametralPitchCircle1.isFixed = True
+        profilePoint = drawToothProfile(toothSketch, module, numTeeth, pressureAngle, backlash, numTeeth/numTeeth1)
 
-        profilePoints = drawToothProfile(toothSketch, module, numTeeth, pressureAngle, backlash, numTeeth/numTeeth1)
-        #_ui.messageBox(f'profilePoints[0]: {profilePoints[0].x} {profilePoints[0].y} {profilePoints[0].z}')
-
-        # Now add some projected points from the tooth profile so the supporitn code can be draw
-        #x = math.sqrt(profilePoints[0].x*profilePoints[0].x+profilePoints[0].y+profilePoints[0].y)
-        #wheelAxisExt = lines.addByTwoPoints(adsk.core.Point3D.create(0,math.cos(backAngle)*(rootDia/2-bca/2),0), wheelCenter)
-        a = bca/2-profilePoints[0].x*math.cos(backAngle)
+        # Add some projected points from the tooth profile for the root cone
+        a = bca/2-profilePoint.x*math.cos(backAngle)
         wheelConeA = adsk.core.Point3D.create(0,a,0)
         b = pitchDia/2 - a*math.tan(backAngle)
-        b = math.sqrt(b*b+profilePoints[0].y*profilePoints[0].y)
+        b = math.sqrt(b*b+profilePoint.y*profilePoint.y)
         wheelConeB = adsk.core.Point3D.create(b,a,0)
         wheelAxisExt = lines.addByTwoPoints(wheelCenter, wheelConeA)
         wheelConeBase = lines.addByTwoPoints(wheelConeA, wheelConeB)
         wheelConeSlant = lines.addByTwoPoints(wheelConeB, coneCenter)
-        _ui.messageBox(f'transform: {a} {b}')
 
         # Create an extra sketch that contains a circle of the diametral pitch.
         diametralPitchSketch = sketches.add(xyPlane)
@@ -909,269 +768,15 @@ def drawGearSet(design, module, numTeeth, numTeeth1, thickness, rootFilletRad, p
         gearValues['module'] = str(module)
         gearValues['numTeeth'] = str(numTeeth)
         gearValues['thickness'] = str(thickness)
-        gearValues['rootFilletRad'] = str(rootFilletRad)
+        #gearValues['rootFilletRad'] = str(rootFilletRad)
         gearValues['pressureAngle'] = str(pressureAngle)
         gearValues['holeDiam'] = str(holeDiam)
         gearValues['backlash'] = str(backlash)
-        attrib = newComp.attributes.add('Gear', 'Values',str(gearValues))
+        attrib = newComp.attributes.add('BevelGear', 'Values',str(gearValues))
         
         newComp.name = str(numTeeth) + ' Tooth Gear'
         return newComp
 
     except Exception as error:
         _ui.messageBox("drawGearSet Failed : " + str(error)) 
-        return None
-
-
-# TODO: Replace diametralPitch parameter with module
-# Builds a spur gear.
-def drawGear(design, diametralPitch, numTeeth, thickness, rootFilletRad, pressureAngle, backlash, holeDiam):
-    try:
-        # The diametral pitch is specified in inches but everthing
-        # here expects all distances to be in centimeters, so convert
-        # for the gear creation.
-        diametralPitch = diametralPitch / 2.54
-    
-        # Compute the various values for a gear.
-        pitchDia = numTeeth / diametralPitch
-        
-        #addendum = 1.0 / diametralPitch
-        if (diametralPitch < (20 *(math.pi/180))-0.000001):
-            dedendum = 1.157 / diametralPitch
-        else:
-            circularPitch = math.pi / diametralPitch
-            if circularPitch >= 20:
-                dedendum = 1.25 / diametralPitch
-            else:
-                dedendum = (1.2 / diametralPitch) + (.002 * 2.54)                
-
-        rootDia = pitchDia - (2 * dedendum)
-        
-        baseCircleDia = pitchDia * math.cos(pressureAngle)
-        outsideDia = (numTeeth + 2) / diametralPitch
-        
-        # Create a new component by creating an occurrence.
-        occs = design.rootComponent.occurrences
-        mat = adsk.core.Matrix3D.create()
-        newOcc = occs.addNewComponent(mat)        
-        newComp = adsk.fusion.Component.cast(newOcc.component)
-        
-        # Create a new sketch.
-        sketches = newComp.sketches
-        xyPlane = newComp.xYConstructionPlane
-        baseSketch = sketches.add(xyPlane)
-
-        # Draw a circle for the base.
-        baseSketch.sketchCurves.sketchCircles.addByCenterRadius(adsk.core.Point3D.create(0,0,0), rootDia/2.0)
-        
-        # Draw a circle for the center hole, if the value is greater than 0.
-        prof = adsk.fusion.Profile.cast(None)
-        if holeDiam - (_app.pointTolerance * 2) > 0:
-            baseSketch.sketchCurves.sketchCircles.addByCenterRadius(adsk.core.Point3D.create(0,0,0), holeDiam/2.0)
-
-            # Find the profile that uses both circles.
-            for prof in baseSketch.profiles:
-                if prof.profileLoops.count == 2:
-                    break
-        else:
-            # Use the single profile.
-            prof = baseSketch.profiles.item(0)
-        
-        #### Extrude the circle to create the base of the gear.
-
-        # Create an extrusion input to be able to define the input needed for an extrusion
-        # while specifying the profile and that a new component is to be created
-        extrudes = newComp.features.extrudeFeatures
-        extInput = extrudes.createInput(prof, adsk.fusion.FeatureOperations.NewBodyFeatureOperation)
-
-        # Define that the extent is a distance extent of 5 cm.
-        distance = adsk.core.ValueInput.createByReal(thickness)
-        extInput.setDistanceExtent(False, distance)
-
-        # Create the extrusion.
-        baseExtrude = extrudes.add(extInput)
-        
-        # Create a second sketch for the tooth.
-        toothSketch = sketches.add(xyPlane)
-
-        # Calculate points along the involute curve.
-        involutePointCount = 15 
-        involuteIntersectionRadius = baseCircleDia / 2.0
-        involutePoints = []
-        involuteSize = (outsideDia - baseCircleDia) / 2.0
-        for i in range(0, involutePointCount):
-            involuteIntersectionRadius = (baseCircleDia / 2.0) + ((involuteSize / (involutePointCount - 1)) * i)
-            newPoint = involutePoint(baseCircleDia / 2.0, involuteIntersectionRadius)
-            involutePoints.append(newPoint)
-            
-        # Get the point along the tooth that's at the pitch diameter and then
-        # calculate the angle to that point.
-        pitchInvolutePoint = involutePoint(baseCircleDia / 2.0, pitchDia / 2.0)
-        pitchPointAngle = math.atan(pitchInvolutePoint.y / pitchInvolutePoint.x)
-
-        # Determine the angle defined by the tooth thickness as measured at
-        # the pitch diameter circle.
-        toothThicknessAngle = (2 * math.pi) / (2 * numTeeth)
-        
-        # Determine the angle needed for the specified backlash.
-        backlashAngle = (backlash / (pitchDia / 2.0)) * .25
-        
-        # Determine the angle to rotate the curve.
-        rotateAngle = -((toothThicknessAngle/2) + pitchPointAngle - backlashAngle)
-        
-        # Rotate the involute so the middle of the tooth lies on the x axis.
-        cosAngle = math.cos(rotateAngle)
-        sinAngle = math.sin(rotateAngle)
-        for i in range(0, involutePointCount):
-            newX = involutePoints[i].x * cosAngle - involutePoints[i].y * sinAngle
-            newY = involutePoints[i].x * sinAngle + involutePoints[i].y * cosAngle
-            involutePoints[i] = adsk.core.Point3D.create(newX, newY, 0)
-
-        # Create a new set of points with a negated y.  This effectively mirrors the original
-        # points about the X axis.
-        involute2Points = []
-        for i in range(0, involutePointCount):
-            involute2Points.append(adsk.core.Point3D.create(involutePoints[i].x, -involutePoints[i].y, 0))
-
-        curve1Dist = []
-        curve1Angle = []
-        for i in range(0, involutePointCount):
-            curve1Dist.append(math.sqrt(involutePoints[i].x * involutePoints[i].x + involutePoints[i].y * involutePoints[i].y))
-            curve1Angle.append(math.atan(involutePoints[i].y / involutePoints[i].x))
-        
-        curve2Dist = []
-        curve2Angle = []
-        for i in range(0, involutePointCount):
-            curve2Dist.append(math.sqrt(involute2Points[i].x * involute2Points[i].x + involute2Points[i].y * involute2Points[i].y))
-            curve2Angle.append(math.atan(involute2Points[i].y / involute2Points[i].x))
-
-        toothSketch.isComputeDeferred = True
-		
-        # Create and load an object collection with the points.
-        pointSet = adsk.core.ObjectCollection.create()
-        for i in range(0, involutePointCount):
-            pointSet.add(involutePoints[i])
-
-        # Create the first spline.
-        spline1 = toothSketch.sketchCurves.sketchFittedSplines.add(pointSet)
-
-        # Add the involute points for the second spline to an ObjectCollection.
-        pointSet = adsk.core.ObjectCollection.create()
-        for i in range(0, involutePointCount):
-            pointSet.add(involute2Points[i])
-
-        # Create the second spline.
-        spline2 = toothSketch.sketchCurves.sketchFittedSplines.add(pointSet)
-
-        # Draw the arc for the top of the tooth.
-        midPoint = adsk.core.Point3D.create((outsideDia / 2), 0, 0)
-        toothSketch.sketchCurves.sketchArcs.addByThreePoints(spline1.endSketchPoint, midPoint, spline2.endSketchPoint)     
-
-        # Check to see if involute goes down to the root or not.  If not, then
-        # create lines to connect the involute to the root.
-        if( baseCircleDia < rootDia ):
-            toothSketch.sketchCurves.sketchLines.addByTwoPoints(spline2.startSketchPoint, spline1.startSketchPoint)
-        else:
-            rootPoint1 = adsk.core.Point3D.create((rootDia / 2 - 0.001) * math.cos(curve1Angle[0] ), (rootDia / 2) * math.sin(curve1Angle[0]), 0)
-            line1 = toothSketch.sketchCurves.sketchLines.addByTwoPoints(rootPoint1, spline1.startSketchPoint)
-
-            rootPoint2 = adsk.core.Point3D.create((rootDia / 2 - 0.001) * math.cos(curve2Angle[0]), (rootDia / 2) * math.sin(curve2Angle[0]), 0)
-            line2 = toothSketch.sketchCurves.sketchLines.addByTwoPoints(rootPoint2, spline2.startSketchPoint)
-
-            baseLine = toothSketch.sketchCurves.sketchLines.addByTwoPoints(line1.startSketchPoint, line2.startSketchPoint)
-
-            # Make the lines tangent to the spline so the root fillet will behave correctly.            
-            line1.isFixed = True
-            line2.isFixed = True
-            toothSketch.geometricConstraints.addTangent(spline1, line1)
-            toothSketch.geometricConstraints.addTangent(spline2, line2)
-       
-        toothSketch.isComputeDeferred = False
-
-        ### Extrude the tooth.
-        
-        # Get the profile defined by the tooth.
-        prof = toothSketch.profiles.item(0)
-
-        # Create an extrusion input to be able to define the input needed for an extrusion
-        # while specifying the profile and that a new component is to be created
-        extInput = extrudes.createInput(prof, adsk.fusion.FeatureOperations.JoinFeatureOperation)
-
-        # Define that the extent is a distance extent of 5 cm.
-        distance = adsk.core.ValueInput.createByReal(thickness)
-        extInput.setDistanceExtent(False, distance)
-
-        # Create the extrusion.
-        toothExtrude = extrudes.add(extInput)
-
-        baseFillet = None
-        if rootFilletRad > 0:
-            ### Find the edges between the base cylinder and the tooth.
-            
-            # Get the outer cylindrical face from the base extrusion by checking the number
-            # of edges and if it's 2 get the other one.
-            cylFace = baseExtrude.sideFaces.item(0)
-            if cylFace.edges.count == 2:
-                cylFace = baseExtrude.sideFaces.item(1)
-    
-            # Get the two linear edges, which are the connection between the cylinder and tooth.
-            edges = adsk.core.ObjectCollection.create()
-            for edge in cylFace.edges:
-                if isinstance(edge.geometry, adsk.core.Line3D):
-                    edges.add(edge)
-    
-            # Create a fillet input to be able to define the input needed for a fillet.
-            fillets = newComp.features.filletFeatures;
-            filletInput = fillets.createInput()
-    
-            # Define that the extent is a distance extent of 5 cm.
-            radius = adsk.core.ValueInput.createByReal(rootFilletRad)
-            filletInput.addConstantRadiusEdgeSet(edges, radius, False)
-    
-            # Create the extrusion.
-            baseFillet = fillets.add(filletInput)
-
-        # Create a pattern of the tooth extrude and the base fillet.
-        circularPatterns = newComp.features.circularPatternFeatures
-        entities = adsk.core.ObjectCollection.create()
-        entities.add(toothExtrude)
-        if baseFillet:
-            entities.add(baseFillet)
-        cylFace = baseExtrude.sideFaces.item(0)        
-        patternInput = circularPatterns.createInput(entities, cylFace)
-        numTeethInput = adsk.core.ValueInput.createByString(str(numTeeth))
-        patternInput.quantity = numTeethInput
-        pattern = circularPatterns.add(patternInput)        
-        
-        # Create an extra sketch that contains a circle of the diametral pitch.
-        diametralPitchSketch = sketches.add(xyPlane)
-        diametralPitchCircle = diametralPitchSketch.sketchCurves.sketchCircles.addByCenterRadius(adsk.core.Point3D.create(0,0,0), pitchDia/2.0)
-        diametralPitchCircle.isConstruction = True
-        diametralPitchCircle.isFixed = True
-        
-        # Group everything used to create the gear in the timeline.
-        timelineGroups = design.timeline.timelineGroups
-        newOccIndex = newOcc.timelineObject.index
-        pitchSketchIndex = diametralPitchSketch.timelineObject.index
-        # ui.messageBox("Indices: " + str(newOccIndex) + ", " + str(pitchSketchIndex))
-        timelineGroup = timelineGroups.add(newOccIndex, pitchSketchIndex)
-        timelineGroup.name = 'Gear'
-        
-        # Add an attribute to the component with all of the input values.  This might 
-        # be used in the future to be able to edit the gear.     
-        gearValues = {}
-        #gearValues['diametralPitch'] = str(diametralPitch * 2.54)
-        gearValues['module'] = str(2.54/diametralPitch)
-        gearValues['numTeeth'] = str(numTeeth)
-        gearValues['thickness'] = str(thickness)
-        gearValues['rootFilletRad'] = str(rootFilletRad)
-        gearValues['pressureAngle'] = str(pressureAngle)
-        gearValues['holeDiam'] = str(holeDiam)
-        gearValues['backlash'] = str(backlash)
-        attrib = newComp.attributes.add('Gear', 'Values',str(gearValues))
-        
-        newComp.name = str(numTeeth) + ' Tooth Gear'
-        return newComp
-    except Exception as error:
-        _ui.messageBox("drawGear Failed : " + str(error)) 
         return None
