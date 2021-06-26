@@ -1,13 +1,6 @@
 #Author-R. Marchese
-#Description-
-
-#Author-Brian Ekins
-#Description-Creates a spur gear component.
-
-# AUTODESK PROVIDES THIS PROGRAM "AS IS" AND WITH ALL FAULTS. AUTODESK SPECIFICALLY  
-# DISCLAIMS ANY IMPLIED WARRANTY OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR USE.  
-# AUTODESK, INC. DOES NOT WARRANT THAT THE OPERATION OF THE PROGRAM WILL BE  
-# UNINTERRUPTED OR ERROR FREE. 
+#Description-Creates a pair of bevel gears. Based on Autodesk sample code by
+#Brian Ekins
 
 import adsk.core, adsk.fusion, adsk.cam, traceback
 import math
@@ -18,9 +11,6 @@ _ui = adsk.core.UserInterface.cast(None)
 _units = ''
 
 # Command inputs
-#_imgInputEnglish = adsk.core.ImageCommandInput.cast(None)
-#_imgInputMetric = adsk.core.ImageCommandInput.cast(None)
-#_standard = adsk.core.DropDownCommandInput.cast(None)
 _pressureAngle = adsk.core.DropDownCommandInput.cast(None)
 _pressureAngleCustom = adsk.core.ValueCommandInput.cast(None)
 _backlash = adsk.core.ValueCommandInput.cast(None)
@@ -305,11 +295,9 @@ class GearCommandExecuteHandler(adsk.core.CommandEventHandler):
             
             if gearComp:
                 desc = 'Gear; Module: ' +  str(module) + '; '
-
                 desc += 'Num Teeth: ' + str(numTeeth) + '; '
                 desc += 'Num Teeth1: ' + str(numTeeth1) + '; '
                 desc += 'Pressure Angle: ' + str(pressureAngle * (180/math.pi)) + '; '
-                
                 desc += 'Backlash: ' + des.unitsManager.formatInternalValue(backlash, _units, True)
                 gearComp.description = desc
 
@@ -520,7 +508,7 @@ def drawToothProfile(toothSketch, module, numTeeth, pressureAngle, backlash, rat
     #        dedendum = 1.25 * module
     #    else:
     #        dedendum = (1.2 * module) + (.002 * 2.54)
-    dedendum = module * 1.157
+    dedendum = module * 1.157   #TODO: Add clearance to user inputs
 
     rootDia = pitchDia - (2 * dedendum)
     baseCircleDia = pitchDia * math.cos(pressureAngle)
@@ -545,7 +533,6 @@ def drawToothProfile(toothSketch, module, numTeeth, pressureAngle, backlash, rat
 
     # Determine the angle defined by the tooth thickness as measured at
     # the pitch diameter circle.
-    #toothThicknessAngle = (2 * math.pi) / (2 * numTeeth)
     toothThicknessAngle = (2 * math.pi) / (2 * Zi)
     
     # Determine the angle needed for the specified backlash.
@@ -661,6 +648,110 @@ def drawGearSet(design, module, numTeeth, numTeeth1, thickness, pressureAngle, b
         xyPlane = newComp.xYConstructionPlane
         #baseSketch = sketches.add(xyPlane)
 
+        # Create sketch for the cross section
+        xzPlane = newComp.xZConstructionPlane
+        crossSectionSketch = sketches.add(xzPlane)
+        lines = crossSectionSketch.sketchCurves.sketchLines
+        coneCenter = adsk.core.Point3D.create(0, -pitchDia1/2, 0)
+        pitchTangent = adsk.core.Point3D.create(pitchDia/2, 0, 0)
+        pinionCenter = adsk.core.Point3D.create(pitchDia/2, -pitchDia1/2, 0)
+        wheelCenter = adsk.core.Point3D.create(0,0,0)
+
+        coneTangentLine = lines.addByTwoPoints(pitchTangent, coneCenter)
+        wheelAxis = lines.addByTwoPoints(wheelCenter, coneCenter)       # for creating rotations later
+        wheelBase = lines.addByTwoPoints(wheelCenter, pitchTangent)     # not sure this is needed
+        pinionAxis = lines.addByTwoPoints(pinionCenter, coneCenter)     # for creating rotations later
+        pinionBase = lines.addByTwoPoints(pinionCenter, pitchTangent)   # not sure this is needed
+
+        coneTangentLine.isConstruction = True
+        coneTangentLine.isFixed = True
+        wheelBase.isConstruction = True
+        wheelBase.isFixed = True
+        pinionBase.isConstruction = True
+        pinionBase.isFixed = True
+
+        # Add construction for the wheel gear teeth at an angle based on gear ratio
+        # Add construction for the wheel gear teeth at an angle based on gear ratio
+        ratio = numTeeth/numTeeth1
+        backConeHeight = module * numTeeth * ratio /2
+        backApex = adsk.core.Point3D.create(-pitchDia/2,backConeHeight*2,0)
+        backAngle = math.atan(pitchDia / (backConeHeight*2))
+        backCone = lines.addByTwoPoints(backApex, pitchTangent)
+        backCone.isConstruction = True
+        backCone.isFixed = True
+        planes = newComp.constructionPlanes
+        planeInput = planes.createInput()
+        planeInput.setByAngle(backCone, adsk.core.ValueInput.createByReal(0.0), None)
+        toothPlane = planes.add(planeInput)
+
+        # Add a sketch for the tooth points defined above 
+        toothSketch = sketches.add(toothPlane)
+
+        # Sketch to tooth profile, returns a point at the tooth's root
+        rootPoint = drawToothProfile(toothSketch, module, numTeeth, pressureAngle, backlash, ratio)
+
+        # Add some projected points from the tooth profile for the root cone
+        a = backConeHeight-rootPoint.x*math.cos(backAngle)
+        wheelConeA = adsk.core.Point3D.create(0,a,0)
+        b = pitchDia/2 - a*math.tan(backAngle)
+        b = math.sqrt(b*b+rootPoint.y*rootPoint.y)
+        wheelConeB = adsk.core.Point3D.create(b,a,0)
+        wheelAxisExt = lines.addByTwoPoints(wheelCenter, wheelConeA)
+        wheelConeBase = lines.addByTwoPoints(wheelConeA, wheelConeB)
+        wheelConeSlant = lines.addByTwoPoints(wheelConeB, coneCenter)
+        # Add construction for the wheel gear teeth at an angle based on gear ratio
+        # Add construction for the wheel gear teeth at an angle based on gear ratio
+
+        # Add construction for the pinion gear teeth at an angle based on gear ratio
+        # Add construction for the pinion gear teeth at an angle based on gear ratio
+        ratio = numTeeth1/numTeeth
+        backConeHeight = module * numTeeth1 * ratio /2
+        
+        # actually extended by 2x so plane origin on z-axis
+        backApex = adsk.core.Point3D.create(pitchDia/2+backConeHeight*2,-pitchDia1,0)
+        backAngle = math.atan(pitchDia1 / (backConeHeight*2))
+        backCone = lines.addByTwoPoints(backApex, pitchTangent)
+        backCone.isConstruction = True
+        backCone.isFixed = True
+        planes = newComp.constructionPlanes
+        planeInput = planes.createInput()
+        planeInput.setByAngle(backCone, adsk.core.ValueInput.createByReal(0.0), None)
+        toothPlane = planes.add(planeInput)
+
+        # Add a sketch for the tooth points defined above 
+        toothSketch = sketches.add(toothPlane)
+
+        # Sketch to tooth profile, returns a point at the tooth's root
+        rootPoint = drawToothProfile(toothSketch, module, numTeeth1, pressureAngle, backlash, ratio)
+
+        # Add some projected points from the tooth profile for the root cone
+        #pinionCenter = adsk.core.Point3D.create(pitchDia/2, -pitchDia1/2, 0)
+        #_ui.messageBox(f'rootPoint : {rootPoint.x} {rootPoint.y}')
+        a = backConeHeight-rootPoint.x*math.cos(backAngle)
+        pinionConeA = adsk.core.Point3D.create(pitchDia/2+a,-pitchDia1/2,0)
+        b = pitchDia1/2 - a*math.tan(backAngle)
+        b = math.sqrt(b*b+rootPoint.y*rootPoint.y)
+        pinionConeB = adsk.core.Point3D.create(pitchDia/2+a,b-pitchDia1/2,0)
+        pinionAxisExt = lines.addByTwoPoints(pinionCenter, pinionConeA)
+        pinionConeBase = lines.addByTwoPoints(pinionConeA, pinionConeB)
+        pinionConeSlant = lines.addByTwoPoints(pinionConeB, coneCenter)
+        # Add construction for the pinion gear teeth at an angle based on gear ratio
+        # Add construction for the pinion gear teeth at an angle based on gear ratio
+
+        # TODO: Replace this with equivialnt cones
+        #### Extrude the circle to create the base of the gear.
+        # Create an extrusion input to be able to define the input needed for an extrusion
+        # while specifying the profile and that a new component is to be created
+        #extrudes = newComp.features.extrudeFeatures
+        #extInput = extrudes.createInput(prof, adsk.fusion.FeatureOperations.NewBodyFeatureOperation)
+
+        # Define that the extent is a distance extent of 5 cm.
+        #distance = adsk.core.ValueInput.createByReal(thickness)
+        #extInput.setDistanceExtent(False, distance)
+
+        # Create the extrusion.
+        #baseExtrude = extrudes.add(extInput)
+
         # Draw a circle for the base.
         #baseSketch.sketchCurves.sketchCircles.addByCenterRadius(adsk.core.Point3D.create(0,0,0), rootDia/2.0)
 
@@ -676,76 +767,6 @@ def drawGearSet(design, module, numTeeth, numTeeth1, thickness, pressureAngle, b
         #else:
         #    # Use the single profile.
         #    prof = baseSketch.profiles.item(0)
-
-        # Create sketch for the cross section
-        xzPlane = newComp.xZConstructionPlane
-        crossSectionSketch = sketches.add(xzPlane)
-        lines = crossSectionSketch.sketchCurves.sketchLines
-        coneCenter = adsk.core.Point3D.create(0, -pitchDia1/2, 0)
-        pitchTangent = adsk.core.Point3D.create(pitchDia/2, 0, 0)
-        pinionCenter = adsk.core.Point3D.create(pitchDia/2, -pitchDia1/2, 0)
-        wheelCenter = adsk.core.Point3D.create(0,0,0)
-
-        ratio = numTeeth/numTeeth1
-        bca = module * numTeeth * ratio
-        backApex = adsk.core.Point3D.create(-pitchDia/2,bca,0)
-        backAngle = math.atan(pitchDia / bca)
-
-        coneTangentLine = lines.addByTwoPoints(pitchTangent, coneCenter)
-        wheelAxis = lines.addByTwoPoints(wheelCenter, coneCenter)       # for creating rotations later
-        wheelBase = lines.addByTwoPoints(wheelCenter, pitchTangent)     # not sure this is needed
-        pinionAxis = lines.addByTwoPoints(pinionCenter, coneCenter)     # for creating rotations later
-        pinionBase = lines.addByTwoPoints(pinionCenter, pitchTangent)   # not sure this is needed
-        backCone = lines.addByTwoPoints(backApex, pitchTangent)
-
-        coneTangentLine.isConstruction = True
-        coneTangentLine.isFixed = True
-        wheelBase.isConstruction = True
-        wheelBase.isFixed = True
-        pinionBase.isConstruction = True
-        pinionBase.isFixed = True
-        backCone.isConstruction = True
-        backCone.isFixed = True
-
-        # Add construction plane by distance on path
-        planes = newComp.constructionPlanes
-        planeInput = planes.createInput()
-        #distance = adsk.core.ValueInput.createByReal(0.0)
-        #planeInput.setByDistanceOnPath(coneTangentLine, distance)
-        #toothPlane = planes.add(planeInput)
-
-        # Add construction plane by angle
-        angle = adsk.core.ValueInput.createByString('0.0 deg')
-        planeInput.setByAngle(backCone, angle, None)
-        toothPlane = planes.add(planeInput)
-
-        #### Extrude the circle to create the base of the gear.
-        # Create an extrusion input to be able to define the input needed for an extrusion
-        # while specifying the profile and that a new component is to be created
-        #extrudes = newComp.features.extrudeFeatures
-        #extInput = extrudes.createInput(prof, adsk.fusion.FeatureOperations.NewBodyFeatureOperation)
-
-        # Define that the extent is a distance extent of 5 cm.
-        #distance = adsk.core.ValueInput.createByReal(thickness)
-        #extInput.setDistanceExtent(False, distance)
-
-        # Create the extrusion.
-        #baseExtrude = extrudes.add(extInput)
-
-        # Create a second sketch for the tooth on xyPlane for now, 
-        toothSketch = sketches.add(toothPlane)
-
-        profilePoint = drawToothProfile(toothSketch, module, numTeeth, pressureAngle, backlash, numTeeth/numTeeth1)
-
-        # Add some projected points from the tooth profile for the root cone
-        a = bca/2-profilePoint.x*math.cos(backAngle)
-        wheelConeA = adsk.core.Point3D.create(0,a,0)
-        b = pitchDia/2 - a*math.tan(backAngle)
-        b = math.sqrt(b*b+profilePoint.y*profilePoint.y)
-        wheelConeB = adsk.core.Point3D.create(b,a,0)
-        wheelAxisExt = lines.addByTwoPoints(wheelCenter, wheelConeA)
-        wheelConeBase = lines.addByTwoPoints(wheelConeA, wheelConeB)
-        wheelConeSlant = lines.addByTwoPoints(wheelConeB, coneCenter)
 
         # Create an extra sketch that contains a circle of the diametral pitch.
         diametralPitchSketch = sketches.add(xyPlane)
