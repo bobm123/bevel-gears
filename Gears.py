@@ -699,6 +699,7 @@ def drawGearSet(design, module, numTeeth, numTeeth1, thickness, pressureAngle, b
         wheelAxisExt = lines.addByTwoPoints(wheelCenter, wheelConeA)
         wheelConeBase = lines.addByTwoPoints(wheelConeA, wheelConeB)
         wheelConeSlant = lines.addByTwoPoints(wheelConeB, coneCenter)
+        SplitLineAt(wheelConeSlant, thickness)
         # Add construction for the wheel gear teeth at an angle based on gear ratio
         # Add construction for the wheel gear teeth at an angle based on gear ratio
 
@@ -735,6 +736,7 @@ def drawGearSet(design, module, numTeeth, numTeeth1, thickness, pressureAngle, b
         pinionAxisExt = lines.addByTwoPoints(pinionCenter, pinionConeA)
         pinionConeBase = lines.addByTwoPoints(pinionConeA, pinionConeB)
         pinionConeSlant = lines.addByTwoPoints(pinionConeB, coneCenter)
+        SplitLineAt(pinionConeSlant, thickness)
         # Add construction for the pinion gear teeth at an angle based on gear ratio
         # Add construction for the pinion gear teeth at an angle based on gear ratio
 
@@ -801,3 +803,17 @@ def drawGearSet(design, module, numTeeth, numTeeth1, thickness, pressureAngle, b
     except Exception as error:
         _ui.messageBox("drawGearSet Failed : " + str(error)) 
         return None
+
+def SplitLineAt(line, distance):
+    start = line.startSketchPoint.geometry
+    end = line.endSketchPoint.geometry
+    length = line.length
+    xs = start.x + distance * (end.x - start.x) / length
+    ys = start.y + distance * (end.y - start.y) / length
+    zs = start.z + distance * (end.z - start.z) / length
+    
+    #_ui.messageBox(f'splitting ({start.x} {start.y} {start.z}) to ({end.x} {end.y} {end.z}) at ({xs} {ys} {zs}) {distance} {length}') 
+
+    split_pt = adsk.core.Point3D.create(xs, ys, zs)
+
+    line.split(split_pt)
