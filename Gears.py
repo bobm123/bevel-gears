@@ -707,7 +707,7 @@ def drawGearSet(design, module, numTeeth, numTeeth1, thickness, pressureAngle, b
         wheelConeSlant = lines.addByTwoPoints(wheelConeB, coneCenter)
         wheelFace = SplitLineAt(wheelConeSlant, thickness)
 
-        # Loft the tooth profile to the cone center
+        # Loft the tooth profile to the cone center and make a new component
         wheelToothProfile = toothSketch.profiles.item(0)
         loftFeats = newComp.features.loftFeatures
         loftInput = loftFeats.createInput(adsk.fusion.FeatureOperations.NewComponentFeatureOperation)
@@ -721,10 +721,6 @@ def drawGearSet(design, module, numTeeth, numTeeth1, thickness, pressureAngle, b
         wheelComp = adsk.fusion.Component.cast(wheelOcc.component)
         wheelComp.name = f'{numTeeth} Tooth'
 
-        # Add construction for the wheel gear teeth at an angle based on gear ratio
-        # Add construction for the wheel gear teeth at an angle based on gear ratio
-
-        # Add construction for the pinion gear teeth at an angle based on gear ratio
         # Add construction for the pinion gear teeth at an angle based on gear ratio
         ratio = numTeeth1/numTeeth
         backConeHeight = module * numTeeth1 * ratio /2
@@ -747,8 +743,6 @@ def drawGearSet(design, module, numTeeth, numTeeth1, thickness, pressureAngle, b
         rootPoint = drawToothProfile(toothSketch, module, numTeeth1, pressureAngle, backlash, ratio)
 
         # Add some projected points from the tooth profile for the root cone
-        #pinionCenter = adsk.core.Point3D.create(pitchDia/2, -pitchDia1/2, 0)
-        #_ui.messageBox(f'rootPoint : {rootPoint.x} {rootPoint.y}')
         a = backConeHeight-rootPoint.x*math.cos(backAngle)
         pinionConeA = adsk.core.Point3D.create(pitchDia/2+a,-pitchDia1/2,0)
         b = pitchDia1/2 - a*math.tan(backAngle)
@@ -758,12 +752,8 @@ def drawGearSet(design, module, numTeeth, numTeeth1, thickness, pressureAngle, b
         pinionConeBase = lines.addByTwoPoints(pinionConeA, pinionConeB)
         pinionConeSlant = lines.addByTwoPoints(pinionConeB, coneCenter)
         pinionFace = SplitLineAt(pinionConeSlant, thickness)
-        # Add construction for the pinion gear teeth at an angle based on gear ratio
-        # Add construction for the pinion gear teeth at an angle based on gear ratio
 
-        lines.addByTwoPoints(wheelFace, pinionFace)
-
-        # Loft the tooth profile to the cone center
+        # Loft the tooth profile to the cone center and make a new component
         pinionToothProfile = toothSketch.profiles.item(0)
         loftFeats = newComp.features.loftFeatures
         loftInput = loftFeats.createInput(adsk.fusion.FeatureOperations.NewComponentFeatureOperation)
@@ -777,7 +767,12 @@ def drawGearSet(design, module, numTeeth, numTeeth1, thickness, pressureAngle, b
         pinionComp = adsk.fusion.Component.cast(pinionOcc.component)
         pinionComp.name = f'{numTeeth1} Tooth'
 
+        # Add some lines to the cross section sketch for trimming the 
+        # teeth and making the root cones (TODO)
+        lines.addByTwoPoints(wheelFace, pinionFace)
+
         # Remove the excess from each tooth with revolute cut operations
+        # Can use all the sketch profiles for this operation
         crossSectionProfiles = adsk.core.ObjectCollection.create()
         for p in crossSectionSketch.profiles:
             crossSectionProfiles.add(p)
@@ -792,9 +787,6 @@ def drawGearSet(design, module, numTeeth, numTeeth1, thickness, pressureAngle, b
         extCutInput .setAngleExtent(True, adsk.core.ValueInput.createByReal(2*math.pi))
         extCutInput.participantBodies = [pinionLoft.bodies.item(0)]
         ext = revolves.add(extCutInput)
-
-        # Udpdate this as new features are added so they can be squashed on the timeline
-        lastGearFeature = ext.timelineObject.index
 
         # TODO: Replace this with equivialnt cones
         # Need to figure out how to tell which profile on the cross section sketch to revolve
@@ -828,6 +820,9 @@ def drawGearSet(design, module, numTeeth, numTeeth1, thickness, pressureAngle, b
         #    # Use the single profile.
         #    prof = baseSketch.profiles.item(0)
 
+        # TODO: Udpdate this as new features are added so they can be squashed on the timeline
+        lastGearFeature = ext.timelineObject.index
+
         # Group everything used to create the gear in the timeline.
         timelineGroups = design.timeline.timelineGroups
         newOccIndex = newOcc.timelineObject.index
@@ -836,7 +831,7 @@ def drawGearSet(design, module, numTeeth, numTeeth1, thickness, pressureAngle, b
         
         # Add an attribute to the component with all of the input values.  This might 
         # be used in the future to be able to edit the gear. TODO: Add a few bevel gear
-        # parameters here
+        # specific parameters here
         gearValues = {}
         gearValues['module'] = str(module)
         gearValues['numTeeth'] = str(numTeeth)
