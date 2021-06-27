@@ -705,7 +705,6 @@ def drawGearSet(design, module, numTeeth, numTeeth1, thickness, pressureAngle, b
         wheelAxisExt = lines.addByTwoPoints(wheelCenter, wheelConeA)
         wheelConeBase = lines.addByTwoPoints(wheelConeA, wheelConeB)
         wheelConeSlant = lines.addByTwoPoints(wheelConeB, coneCenter)
-        wheelFace = SplitLineAt(wheelConeSlant, thickness)
 
         # Loft the tooth profile to the cone center and make a new component
         wheelToothProfile = toothSketch.profiles.item(0)
@@ -751,7 +750,6 @@ def drawGearSet(design, module, numTeeth, numTeeth1, thickness, pressureAngle, b
         pinionAxisExt = lines.addByTwoPoints(pinionCenter, pinionConeA)
         pinionConeBase = lines.addByTwoPoints(pinionConeA, pinionConeB)
         pinionConeSlant = lines.addByTwoPoints(pinionConeB, coneCenter)
-        pinionFace = SplitLineAt(pinionConeSlant, thickness)
 
         # Loft the tooth profile to the cone center and make a new component
         pinionToothProfile = toothSketch.profiles.item(0)
@@ -769,23 +767,63 @@ def drawGearSet(design, module, numTeeth, numTeeth1, thickness, pressureAngle, b
 
         # Add some lines to the cross section sketch for trimming the 
         # teeth and making the root cones (TODO)
+        wheelFace = SplitLineAt(wheelConeSlant, thickness)
+        pinionFace = SplitLineAt(pinionConeSlant, thickness)
+        #_ui.messageBox(f'wheel split: {wheelFace.x} {wheelFace.y} {wheelFace.z}')
+        #_ui.messageBox(f'pinion split: {pinionFace.x} {pinionFace.y} {pinionFace.z}')
+
         lines.addByTwoPoints(wheelFace, pinionFace)
 
+        newWpt = adsk.core.Point3D.create(0, wheelFace.y, 0)
+        wheelAxis.split(newWpt)
+        lines.addByTwoPoints(wheelFace, newWpt)
+
+        newPpt = adsk.core.Point3D.create(pinionFace.x, pinionCenter.y, 0)
+        pinionAxis.split(newPpt)
+        lines.addByTwoPoints(pinionFace, newPpt)
+
+        # split the axis and draw a line for the top of the cones.split(split_pt)
+
+        #pinionCenter = adsk.core.Point3D.create(pitchDia/2, -pitchDia1/2, 0)
+
         # Remove the excess from each tooth with revolute cut operations
-        # Can use all the sketch profiles for this operation
+        # Can use all the sketch profiles for this operation. Also need to
+        # find the profile to revolve for the root cones for the wheel and 
+        # pinion
         crossSectionProfiles = adsk.core.ObjectCollection.create()
+        centX = []
+        centY = []
         for p in crossSectionSketch.profiles:
             crossSectionProfiles.add(p)
+            areaProps = p.areaProperties(adsk.fusion.CalculationAccuracy.MediumCalculationAccuracy)
+            centX.append(areaProps.centroid.x)
+            centY.append(areaProps.centroid.y)
+
+        #_ui.messageBox(f'area properties: {dist}')
+        w = centY.index(max(centY))
+        p = centX.index(max(centX))
+
+        #_ui.messageBox(f'wheel: {w}, pinion {p} ')
+        wheelRootCone = crossSectionSketch.profiles.item(w)
+        pinionRootCode = crossSectionSketch.profiles.item(p)
 
         revolves = wheelComp.features.revolveFeatures
-        extCutInput  = revolves.createInput(crossSectionProfiles, wheelAxis, adsk.fusion.FeatureOperations.CutFeatureOperation)
-        extCutInput .setAngleExtent(True, adsk.core.ValueInput.createByReal(2*math.pi))
+        extCutInput = revolves.createInput(crossSectionProfiles, wheelAxis, adsk.fusion.FeatureOperations.CutFeatureOperation)
+        extCutInput.setAngleExtent(True, adsk.core.ValueInput.createByReal(2*math.pi))
         extCutInput.participantBodies = [wheelLoft.bodies.item(0)]
         ext = revolves.add(extCutInput)
 
-        extCutInput  = revolves.createInput(crossSectionProfiles, pinionAxis, adsk.fusion.FeatureOperations.CutFeatureOperation)
-        extCutInput .setAngleExtent(True, adsk.core.ValueInput.createByReal(2*math.pi))
+        extCutInput = revolves.createInput(crossSectionProfiles, pinionAxis, adsk.fusion.FeatureOperations.CutFeatureOperation)
+        extCutInput.setAngleExtent(True, adsk.core.ValueInput.createByReal(2*math.pi))
         extCutInput.participantBodies = [pinionLoft.bodies.item(0)]
+        ext = revolves.add(extCutInput)
+
+        extCutInput = revolves.createInput(wheelRootCone, wheelAxis, adsk.fusion.FeatureOperations.NewBodyFeatureOperation)
+        extCutInput.setAngleExtent(True, adsk.core.ValueInput.createByReal(2*math.pi))
+        ext = revolves.add(extCutInput)
+
+        extCutInput = revolves.createInput(pinionRootCode, pinionAxis, adsk.fusion.FeatureOperations.NewBodyFeatureOperation)
+        extCutInput.setAngleExtent(True, adsk.core.ValueInput.createByReal(2*math.pi))
         ext = revolves.add(extCutInput)
 
         # TODO: Replace this with equivialnt cones
