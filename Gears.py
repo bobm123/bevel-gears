@@ -651,12 +651,16 @@ def drawGearSet(design, module, numTeeth, numTeeth1, thickness, pressureAngle, b
         # Create sketch for the cross section
         xzPlane = newComp.xZConstructionPlane
         crossSectionSketch = sketches.add(xzPlane)
-        lines = crossSectionSketch.sketchCurves.sketchLines
+
+        # A rectangle defining the gears geometry based on their ratio
         coneCenter = adsk.core.Point3D.create(0, -pitchDia1/2, 0)
         pitchTangent = adsk.core.Point3D.create(pitchDia/2, 0, 0)
         pinionCenter = adsk.core.Point3D.create(pitchDia/2, -pitchDia1/2, 0)
         wheelCenter = adsk.core.Point3D.create(0,0,0)
 
+        coneCenterSP = crossSectionSketch.sketchPoints.add(coneCenter)
+
+        lines = crossSectionSketch.sketchCurves.sketchLines
         coneTangentLine = lines.addByTwoPoints(pitchTangent, coneCenter)
         wheelAxis = lines.addByTwoPoints(wheelCenter, coneCenter)       # for creating rotations later
         wheelBase = lines.addByTwoPoints(wheelCenter, pitchTangent)     # not sure this is needed
@@ -672,16 +676,18 @@ def drawGearSet(design, module, numTeeth, numTeeth1, thickness, pressureAngle, b
 
         # Add construction for the wheel gear teeth at an angle based on gear ratio
         # Add construction for the wheel gear teeth at an angle based on gear ratio
+
+        # Make a plane at an angle for the tooth profile using the gear's back cone
         ratio = numTeeth/numTeeth1
         backConeHeight = module * numTeeth * ratio /2
         backApex = adsk.core.Point3D.create(-pitchDia/2,backConeHeight*2,0)
         backAngle = math.atan(pitchDia / (backConeHeight*2))
-        backCone = lines.addByTwoPoints(backApex, pitchTangent)
-        backCone.isConstruction = True
-        backCone.isFixed = True
+        wheelBackCone = lines.addByTwoPoints(backApex, pitchTangent)
+        wheelBackCone.isConstruction = True
+        wheelBackCone.isFixed = True
         planes = newComp.constructionPlanes
         planeInput = planes.createInput()
-        planeInput.setByAngle(backCone, adsk.core.ValueInput.createByReal(0.0), None)
+        planeInput.setByAngle(wheelBackCone, adsk.core.ValueInput.createByReal(0.0), None)
         toothPlane = planes.add(planeInput)
 
         # Add a sketch for the tooth points defined above 
@@ -689,6 +695,20 @@ def drawGearSet(design, module, numTeeth, numTeeth1, thickness, pressureAngle, b
 
         # Sketch to tooth profile, returns a point at the tooth's root
         rootPoint = drawToothProfile(toothSketch, module, numTeeth, pressureAngle, backlash, ratio)
+
+        # Loft the tooth profile to the cone center
+        wheelToothProfile = toothSketch.profiles.item(0)
+        loftFeats = newComp.features.loftFeatures
+        loftInput = loftFeats.createInput(adsk.fusion.FeatureOperations.NewComponentFeatureOperation)
+        loftSectionsObj = loftInput.loftSections
+        loftSectionsObj.add(wheelToothProfile)
+        coneCenterSP = crossSectionSketch.sketchPoints.add(coneCenter)
+        loftSectionsObj.add(coneCenterSP)
+        loftFeats.add(loftInput)
+
+        wheelComp = newComp.occurrences.item(0)
+        #wheelComp.name =  f'{numTeeth} Tooth'
+        #_ui.messageBox(f'Added component{wheelComp.name}') 
 
         # Add some projected points from the tooth profile for the root cone
         a = backConeHeight-rootPoint.x*math.cos(backAngle)
@@ -699,7 +719,7 @@ def drawGearSet(design, module, numTeeth, numTeeth1, thickness, pressureAngle, b
         wheelAxisExt = lines.addByTwoPoints(wheelCenter, wheelConeA)
         wheelConeBase = lines.addByTwoPoints(wheelConeA, wheelConeB)
         wheelConeSlant = lines.addByTwoPoints(wheelConeB, coneCenter)
-        SplitLineAt(wheelConeSlant, thickness)
+        wheelFace = SplitLineAt(wheelConeSlant, thickness)
         # Add construction for the wheel gear teeth at an angle based on gear ratio
         # Add construction for the wheel gear teeth at an angle based on gear ratio
 
@@ -711,12 +731,12 @@ def drawGearSet(design, module, numTeeth, numTeeth1, thickness, pressureAngle, b
         # actually extended by 2x so plane origin on z-axis
         backApex = adsk.core.Point3D.create(pitchDia/2+backConeHeight*2,-pitchDia1,0)
         backAngle = math.atan(pitchDia1 / (backConeHeight*2))
-        backCone = lines.addByTwoPoints(backApex, pitchTangent)
-        backCone.isConstruction = True
-        backCone.isFixed = True
+        pinionBackCone = lines.addByTwoPoints(backApex, pitchTangent)
+        pinionBackCone.isConstruction = True
+        pinionBackCone.isFixed = True
         planes = newComp.constructionPlanes
         planeInput = planes.createInput()
-        planeInput.setByAngle(backCone, adsk.core.ValueInput.createByReal(0.0), None)
+        planeInput.setByAngle(pinionBackCone, adsk.core.ValueInput.createByReal(0.0), None)
         toothPlane = planes.add(planeInput)
 
         # Add a sketch for the tooth points defined above 
@@ -736,9 +756,27 @@ def drawGearSet(design, module, numTeeth, numTeeth1, thickness, pressureAngle, b
         pinionAxisExt = lines.addByTwoPoints(pinionCenter, pinionConeA)
         pinionConeBase = lines.addByTwoPoints(pinionConeA, pinionConeB)
         pinionConeSlant = lines.addByTwoPoints(pinionConeB, coneCenter)
-        SplitLineAt(pinionConeSlant, thickness)
+        pinionFace = SplitLineAt(pinionConeSlant, thickness)
         # Add construction for the pinion gear teeth at an angle based on gear ratio
         # Add construction for the pinion gear teeth at an angle based on gear ratio
+
+        lines.addByTwoPoints(wheelFace, pinionFace)
+
+        # Loft the tooth profile to the cone center
+        pinionToothProfile = toothSketch.profiles.item(0)
+        loftFeats = newComp.features.loftFeatures
+        loftInput = loftFeats.createInput(adsk.fusion.FeatureOperations.NewComponentFeatureOperation)
+        loftSectionsObj = loftInput.loftSections
+        loftSectionsObj.add(pinionToothProfile)
+        coneCenterSP = crossSectionSketch.sketchPoints.add(coneCenter)
+        loftSectionsObj.add(coneCenterSP)
+        pinionLoft = loftFeats.add(loftInput)
+
+        pinionComp = newComp.occurrences.item(1)
+        #pinionComp.name =  f'{numTeeth1} Tooth' # Probable need to cast this for renaming name
+        #_ui.messageBox(f'Added component{pinionComp.name }') 
+        pinionLoftIndex = pinionLoft.timelineObject.index
+        #_ui.messageBox(f'Pinion Loft timeline index {pinionLoftIndex}'))
 
         # TODO: Replace this with equivialnt cones
         #### Extrude the circle to create the base of the gear.
@@ -770,18 +808,10 @@ def drawGearSet(design, module, numTeeth, numTeeth1, thickness, pressureAngle, b
         #    # Use the single profile.
         #    prof = baseSketch.profiles.item(0)
 
-        # Create an extra sketch that contains a circle of the diametral pitch.
-        diametralPitchSketch = sketches.add(xyPlane)
-        diametralPitchCircle = diametralPitchSketch.sketchCurves.sketchCircles.addByCenterRadius(adsk.core.Point3D.create(0,0,0), pitchDia/2.0)
-        diametralPitchCircle.isConstruction = True
-        diametralPitchCircle.isFixed = True
-
         # Group everything used to create the gear in the timeline.
         timelineGroups = design.timeline.timelineGroups
         newOccIndex = newOcc.timelineObject.index
-        pitchSketchIndex = diametralPitchSketch.timelineObject.index
-        # ui.messageBox("Indices: " + str(newOccIndex) + ", " + str(pitchSketchIndex))
-        timelineGroup = timelineGroups.add(newOccIndex, pitchSketchIndex)
+        timelineGroup = timelineGroups.add(newOccIndex, pinionLoftIndex)
         timelineGroup.name = 'BevelGear'
         
         # Add an attribute to the component with all of the input values.  This might 
@@ -797,7 +827,7 @@ def drawGearSet(design, module, numTeeth, numTeeth1, thickness, pressureAngle, b
         gearValues['backlash'] = str(backlash)
         attrib = newComp.attributes.add('BevelGear', 'Values',str(gearValues))
         
-        newComp.name = str(numTeeth) + ' Tooth Gear'
+        newComp.name = f'{numTeeth}/{numTeeth1} Bevel Gears'
         return newComp
 
     except Exception as error:
@@ -813,7 +843,7 @@ def SplitLineAt(line, distance):
     zs = start.z + distance * (end.z - start.z) / length
     
     #_ui.messageBox(f'splitting ({start.x} {start.y} {start.z}) to ({end.x} {end.y} {end.z}) at ({xs} {ys} {zs}) {distance} {length}') 
-
     split_pt = adsk.core.Point3D.create(xs, ys, zs)
-
     line.split(split_pt)
+
+    return(split_pt)
