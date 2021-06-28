@@ -642,8 +642,6 @@ def drawGearSet(design, module, numTeeth, numTeeth1, thickness, pressureAngle, b
 
         ###### Create a new sketch for the cross section of the gears
         sketches = newComp.sketches
-        #xyPlane = newComp.xYConstructionPlane
-        #baseSketch = sketches.add(xyPlane)
         xzPlane = newComp.xZConstructionPlane
         crossSectionSketch = sketches.add(xzPlane)
 
@@ -842,34 +840,40 @@ def drawGearSet(design, module, numTeeth, numTeeth1, thickness, pressureAngle, b
         extBodyInput.setAngleExtent(True, adsk.core.ValueInput.createByReal(2*math.pi))
         ext = revolves1.add(extBodyInput)
 
-        #### Extrude the circle to create the base of the gear.
-        # Create an extrusion input to be able to define the input needed for an extrusion
-        # while specifying the profile and that a new component is to be created
-        #extrudes = newComp.features.extrudeFeatures
-        #extInput = extrudes.createInput(prof, adsk.fusion.FeatureOperations.NewBodyFeatureOperation)
+        #### Drill holes for the shafts
+        wheelSketches = wheelComp.sketches
+        rootConeBody = wheelComp.bRepBodies.item(wheelComp.bRepBodies.count-1)
+        planarFaces = []
+        for i,face in enumerate(rootConeBody.faces):
+            #_ui.messageBox(f'face {i} type  {face.geometry.surfaceType}')
+            if 0 == face.geometry.surfaceType:
+                planarFaces.append(rootConeBody.faces.item(i))
 
-        # Define that the extent is a distance extent of 5 cm.
-        #distance = adsk.core.ValueInput.createByReal(thickness)
-        #extInput.setDistanceExtent(False, distance)
+        wheelSketch = wheelSketches.add(planarFaces[0])
+        wheelSketch.sketchCurves.sketchCircles.addByCenterRadius(adsk.core.Point3D.create(0,0,0), holeDiam/2.0)
+        extrudes = wheelComp.features.extrudeFeatures
+        extInput = extrudes.createInput(wheelSketch.profiles.item(1), adsk.fusion.FeatureOperations.CutFeatureOperation)
+        extInput.participantBodies = [rootConeBody]
+        extent_toentity = adsk.fusion.ToEntityExtentDefinition.create(planarFaces[1], True)
+        extInput.setOneSideExtent(extent_toentity, adsk.fusion.ExtentDirections.PositiveExtentDirection)
+        ext = extrudes.add(extInput)
 
-        # Create the extrusion.
-        #baseExtrude = extrudes.add(extInput)
+        pinionSketches = pinionComp.sketches
+        rootConeBody = pinionComp.bRepBodies.item(pinionComp.bRepBodies.count-1)
+        planarFaces = []
+        for i,face in enumerate(rootConeBody.faces):
+            #_ui.messageBox(f'face {i} type  {face.geometry.surfaceType}')
+            if 0 == face.geometry.surfaceType:
+                planarFaces.append(rootConeBody.faces.item(i))
 
-        # Draw a circle for the base.
-        #baseSketch.sketchCurves.sketchCircles.addByCenterRadius(adsk.core.Point3D.create(0,0,0), rootDia/2.0)
-
-        # Draw a circle for the center hole, if the value is greater than 0.
-        #prof = adsk.fusion.Profile.cast(None)
-        #if holeDiam - (_app.pointTolerance * 2) > 0:
-        #    baseSketch.sketchCurves.sketchCircles.addByCenterRadius(adsk.core.Point3D.create(0,0,0), holeDiam/2.0)
-        #
-        #    # Find the profile that uses both circles.
-        #    for prof in baseSketch.profiles:
-        #        if prof.profileLoops.count == 2:
-        #            break
-        #else:
-        #    # Use the single profile.
-        #    prof = baseSketch.profiles.item(0)
+        pinionSketch = pinionSketches.add(planarFaces[1])
+        pinionSketch.sketchCurves.sketchCircles.addByCenterRadius(adsk.core.Point3D.create(-pitchDia1/2,0,0), holeDiam/2.0)
+        extrudes = pinionComp.features.extrudeFeatures
+        extInput = extrudes.createInput(pinionSketch.profiles.item(1), adsk.fusion.FeatureOperations.CutFeatureOperation)
+        extInput.participantBodies = [rootConeBody]
+        extent_toentity = adsk.fusion.ToEntityExtentDefinition.create(planarFaces[0], True)
+        extInput.setOneSideExtent(extent_toentity, adsk.fusion.ExtentDirections.PositiveExtentDirection)
+        ext = extrudes.add(extInput)
 
         # TODO: Udpdate this as new features are added so they can be squashed on the timeline
         lastGearFeature = ext.timelineObject.index
@@ -886,6 +890,7 @@ def drawGearSet(design, module, numTeeth, numTeeth1, thickness, pressureAngle, b
         gearValues = {}
         gearValues['module'] = str(module)
         gearValues['numTeeth'] = str(numTeeth)
+        gearValues['numTeeth1'] = str(numTeeth1)
         gearValues['thickness'] = str(thickness)
         gearValues['pressureAngle'] = str(pressureAngle)
         gearValues['holeDiam'] = str(holeDiam)
@@ -898,6 +903,7 @@ def drawGearSet(design, module, numTeeth, numTeeth1, thickness, pressureAngle, b
     except Exception as error:
         _ui.messageBox("drawGearSet Failed : " + str(error)) 
         return None
+
 
 def SplitLineAt(line, distance):
     start = line.startSketchPoint.geometry
