@@ -616,8 +616,7 @@ def drawGearSet(design, module, numTeeth, numTeeth1, thickness, pressureAngle, b
         # for the gear creation.
         module = module / 10
 
-        # Compute the various values for a gear.
-        # Compute the various values for a gear.
+        ###### Compute the various values for a gear.
         pitchDia = numTeeth * module
         pitchDia1 = numTeeth1 * module
 
@@ -634,21 +633,17 @@ def drawGearSet(design, module, numTeeth, numTeeth1, thickness, pressureAngle, b
         rootDia = pitchDia - (2 * dedendum)
         baseCircleDia = pitchDia * math.cos(pressureAngle)
         outsideDia = (numTeeth + 2) * module
-        # Compute the various values for a gear.
-        # Compute the various values for a gear.
 
-        # Create a new component by creating an occurrence.
+        ###### Create a new component by creating an occurrence.
         occs = design.rootComponent.occurrences
         mat = adsk.core.Matrix3D.create()
         newOcc = occs.addNewComponent(mat)        
         newComp = adsk.fusion.Component.cast(newOcc.component)
 
-        # Create a new sketch.
+        ###### Create a new sketch for the cross section of the gears
         sketches = newComp.sketches
-        xyPlane = newComp.xYConstructionPlane
+        #xyPlane = newComp.xYConstructionPlane
         #baseSketch = sketches.add(xyPlane)
-
-        # Create sketch for the cross section
         xzPlane = newComp.xZConstructionPlane
         crossSectionSketch = sketches.add(xzPlane)
 
@@ -674,12 +669,11 @@ def drawGearSet(design, module, numTeeth, numTeeth1, thickness, pressureAngle, b
         pinionBase.isConstruction = True
         pinionBase.isFixed = True
 
-        # Add construction for the wheel gear teeth at an angle based on gear ratio
-        # Add construction for the wheel gear teeth at an angle based on gear ratio
-
         # Make a plane at an angle for the tooth profile using the gear's back cone
         ratio = numTeeth/numTeeth1
         backConeHeight = module * numTeeth * ratio /2
+
+        # actually extended by 2x so plane's origin on z-axis
         backApex = adsk.core.Point3D.create(-pitchDia/2,backConeHeight*2,0)
         backAngle = math.atan(pitchDia / (backConeHeight*2))
         wheelBackCone = lines.addByTwoPoints(backApex, pitchTangent)
@@ -706,7 +700,7 @@ def drawGearSet(design, module, numTeeth, numTeeth1, thickness, pressureAngle, b
         wheelConeBase = lines.addByTwoPoints(wheelConeA, wheelConeB)
         wheelConeSlant = lines.addByTwoPoints(wheelConeB, coneCenter)
 
-        # Loft the tooth profile to the cone center and make a new component
+        ##### Loft the tooth profile to the cone center and make a new component
         wheelToothProfile = toothSketch.profiles.item(0)
         loftFeats = newComp.features.loftFeatures
         loftInput = loftFeats.createInput(adsk.fusion.FeatureOperations.NewComponentFeatureOperation)
@@ -720,11 +714,12 @@ def drawGearSet(design, module, numTeeth, numTeeth1, thickness, pressureAngle, b
         wheelComp = adsk.fusion.Component.cast(wheelOcc.component)
         wheelComp.name = f'{numTeeth} Tooth'
 
-        # Add construction for the pinion gear teeth at an angle based on gear ratio
+        ##### Add construction plane for the pinion teeth at an angle based on gear ratio
         ratio = numTeeth1/numTeeth
         backConeHeight = module * numTeeth1 * ratio /2
         
-        # actually extended by 2x so plane origin on z-axis
+        # Make a plane at an angle for the tooth profile using the gear's back cone
+        # actually extended by 2x so plane origin's on z-axis
         backApex = adsk.core.Point3D.create(pitchDia/2+backConeHeight*2,-pitchDia1,0)
         backAngle = math.atan(pitchDia1 / (backConeHeight*2))
         pinionBackCone = lines.addByTwoPoints(backApex, pitchTangent)
@@ -751,7 +746,7 @@ def drawGearSet(design, module, numTeeth, numTeeth1, thickness, pressureAngle, b
         pinionConeBase = lines.addByTwoPoints(pinionConeA, pinionConeB)
         pinionConeSlant = lines.addByTwoPoints(pinionConeB, coneCenter)
 
-        # Loft the tooth profile to the cone center and make a new component
+        ##### Loft the tooth profile to the cone center and make a new component
         pinionToothProfile = toothSketch.profiles.item(0)
         loftFeats = newComp.features.loftFeatures
         loftInput = loftFeats.createInput(adsk.fusion.FeatureOperations.NewComponentFeatureOperation)
@@ -765,13 +760,9 @@ def drawGearSet(design, module, numTeeth, numTeeth1, thickness, pressureAngle, b
         pinionComp = adsk.fusion.Component.cast(pinionOcc.component)
         pinionComp.name = f'{numTeeth1} Tooth'
 
-        # Add some lines to the cross section sketch for trimming the 
-        # teeth and making the root cones (TODO)
+        # Add some lines to the cross section sketch for trimming the teeth
         wheelFace = SplitLineAt(wheelConeSlant, thickness)
         pinionFace = SplitLineAt(pinionConeSlant, thickness)
-        #_ui.messageBox(f'wheel split: {wheelFace.x} {wheelFace.y} {wheelFace.z}')
-        #_ui.messageBox(f'pinion split: {pinionFace.x} {pinionFace.y} {pinionFace.z}')
-
         lines.addByTwoPoints(wheelFace, pinionFace)
 
         newWpt = adsk.core.Point3D.create(0, wheelFace.y, 0)
@@ -782,14 +773,10 @@ def drawGearSet(design, module, numTeeth, numTeeth1, thickness, pressureAngle, b
         pinionAxis.split(newPpt)
         lines.addByTwoPoints(pinionFace, newPpt)
 
-        # split the axis and draw a line for the top of the cones.split(split_pt)
-
-        #pinionCenter = adsk.core.Point3D.create(pitchDia/2, -pitchDia1/2, 0)
-
-        # Remove the excess from each tooth with revolute cut operations
-        # Can use all the sketch profiles for this operation. Also need to
-        # find the profile to revolve for the root cones for the wheel and 
-        # pinion
+        ##### Remove the excess material near the apex of each tooth
+        # Can use all the sketch profiles for the cut operation. While iterating
+        # over all the profiles on the criss section sketch can look for the
+        # the profiles to revolve for the root cones for the wheel and pinion 
         crossSectionProfiles = adsk.core.ObjectCollection.create()
         centX = []
         centY = []
@@ -799,35 +786,61 @@ def drawGearSet(design, module, numTeeth, numTeeth1, thickness, pressureAngle, b
             centX.append(areaProps.centroid.x)
             centY.append(areaProps.centroid.y)
 
-        #_ui.messageBox(f'area properties: {dist}')
-        w = centY.index(max(centY))
-        p = centX.index(max(centX))
-
+        # Find the profile to rotate using the centroids
+        wIndex = centY.index(max(centY))     # the lowest y-axis (max val since y runs negative)
+        pIndex = centX.index(max(centX))     # the greatest x-value
         #_ui.messageBox(f'wheel: {w}, pinion {p} ')
-        wheelRootCone = crossSectionSketch.profiles.item(w)
-        pinionRootCode = crossSectionSketch.profiles.item(p)
+        wheelRootCone = crossSectionSketch.profiles.item(wIndex)
+        pinionRootCode = crossSectionSketch.profiles.item(pIndex)
 
-        revolves = wheelComp.features.revolveFeatures
-        extCutInput = revolves.createInput(crossSectionProfiles, wheelAxis, adsk.fusion.FeatureOperations.CutFeatureOperation)
+        revolves0 = wheelComp.features.revolveFeatures
+        extCutInput = revolves0.createInput(crossSectionProfiles, wheelAxis, adsk.fusion.FeatureOperations.CutFeatureOperation)
         extCutInput.setAngleExtent(True, adsk.core.ValueInput.createByReal(2*math.pi))
         extCutInput.participantBodies = [wheelLoft.bodies.item(0)]
-        ext = revolves.add(extCutInput)
+        ext = revolves0.add(extCutInput)
 
-        extCutInput = revolves.createInput(crossSectionProfiles, pinionAxis, adsk.fusion.FeatureOperations.CutFeatureOperation)
+        revolves1 = pinionComp.features.revolveFeatures
+        extCutInput = revolves1.createInput(crossSectionProfiles, pinionAxis, adsk.fusion.FeatureOperations.CutFeatureOperation)
         extCutInput.setAngleExtent(True, adsk.core.ValueInput.createByReal(2*math.pi))
         extCutInput.participantBodies = [pinionLoft.bodies.item(0)]
-        ext = revolves.add(extCutInput)
+        ext = revolves1.add(extCutInput)
 
-        extCutInput = revolves.createInput(wheelRootCone, wheelAxis, adsk.fusion.FeatureOperations.NewBodyFeatureOperation)
-        extCutInput.setAngleExtent(True, adsk.core.ValueInput.createByReal(2*math.pi))
-        ext = revolves.add(extCutInput)
+        ##### Create Circular patters for the teeth
+        # Create input entities for circular pattern (wheel)
+        inputEntites = adsk.core.ObjectCollection.create()
+        inputEntites.add(wheelComp.bRepBodies.item(0))
 
-        extCutInput = revolves.createInput(pinionRootCode, pinionAxis, adsk.fusion.FeatureOperations.NewBodyFeatureOperation)
-        extCutInput.setAngleExtent(True, adsk.core.ValueInput.createByReal(2*math.pi))
-        ext = revolves.add(extCutInput)
+        # Create the input for circular pattern
+        circularFeats = wheelComp.features.circularPatternFeatures
+        circularFeatInput = circularFeats.createInput(inputEntites, wheelAxis)
+        circularFeatInput.quantity = adsk.core.ValueInput.createByReal(numTeeth)
+        circularFeatInput.totalAngle = adsk.core.ValueInput.createByString('360 deg')
+        circularFeatInput.isSymmetric = False
 
-        # TODO: Replace this with equivialnt cones
-        # Need to figure out how to tell which profile on the cross section sketch to revolve
+        # Create the circular pattern of wheel teeth
+        circularFeat = circularFeats.add(circularFeatInput)
+
+        # Create input entities for circular pattern (pinion)
+        inputEntites = adsk.core.ObjectCollection.create()
+        inputEntites.add(pinionComp.bRepBodies.item(0))
+
+        # Create the input for circular pattern
+        circularFeats = pinionComp.features.circularPatternFeatures
+        circularFeatInput = circularFeats.createInput(inputEntites, pinionAxis)
+        circularFeatInput.quantity = adsk.core.ValueInput.createByReal(numTeeth1)
+        circularFeatInput.totalAngle = adsk.core.ValueInput.createByString('360 deg')
+        circularFeatInput.isSymmetric = False
+
+        # Create the circular pattern of pinion teeth
+        circularFeat = circularFeats.add(circularFeatInput)
+
+        ##### Revolve the root cones
+        extBodyInput = revolves0.createInput(wheelRootCone, wheelAxis, adsk.fusion.FeatureOperations.NewBodyFeatureOperation)
+        extBodyInput.setAngleExtent(True, adsk.core.ValueInput.createByReal(2*math.pi))
+        ext = revolves0.add(extBodyInput)
+        extBodyInput = revolves1.createInput(pinionRootCode, pinionAxis, adsk.fusion.FeatureOperations.NewBodyFeatureOperation)
+        extBodyInput.setAngleExtent(True, adsk.core.ValueInput.createByReal(2*math.pi))
+        ext = revolves1.add(extBodyInput)
 
         #### Extrude the circle to create the base of the gear.
         # Create an extrusion input to be able to define the input needed for an extrusion
