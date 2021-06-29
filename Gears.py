@@ -37,7 +37,7 @@ def run(context):
         cmdDef = _ui.commandDefinitions.itemById('adskXGearPythonScript')
         if not cmdDef:
             # Create a command definition.
-            cmdDef = _ui.commandDefinitions.addButtonDefinition('adskXGearPythonScript', 'XGears', 'Creates a gear component', '') 
+            cmdDef = _ui.commandDefinitions.addButtonDefinition('adskXGearPythonScript', 'Bevel Gears', 'Creates a pair of bevel gears', '') 
         
         # Connect to the command created event.
         onCommandCreated = GearCommandCreatedHandler()
